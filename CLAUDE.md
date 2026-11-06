@@ -31,7 +31,20 @@ Formato: `<tipo>/<nº da issue>-<descricao-curta>`
 
 - Java 21 · Spring Boot 3 · Maven · MySQL 8 · Flyway.
 - Código em inglês; README, issues e PRs em português.
-- Pacotes por feature em `com.giovanni.orderhub`: `product`, `order`, `integration`, `shared`.
+- Pacotes **por camada** em `com.giovanni.orderhub`. Toda classe nova entra na pasta da sua camada:
+
+| Pacote | O que fica |
+|---|---|
+| `controller` | `@RestController`: recebe a requisição, valida o DTO, chama o service |
+| `service` | regra de negócio e transações |
+| `repository` | interfaces Spring Data JPA |
+| `model` | entidades JPA, enums e modelos de domínio |
+| `dto` | records de entrada e saída da API, um subpacote por recurso (`dto/product`, `dto/order`) |
+| `exception` | exceções de negócio e o `GlobalExceptionHandler` |
+| `integration` | adapters dos marketplaces, um subpacote por canal (`integration/alfashop`, ...) |
+| `config` | classes `@Configuration` |
+
+- Testes espelham o pacote da classe testada (`service/OrderServiceTest`, `controller/OrderApiIntegrationTest`).
 - Schema só via migrations Flyway (`ddl-auto: validate`).
 
 ## Boas práticas de código

@@ -3,10 +3,10 @@ package com.giovanni.orderhub.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Validation;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 /** Monta um {@link PayloadReader} real (Jackson + Bean Validation) sem subir o Spring. */
 public final class MapperTestSupport {

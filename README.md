@@ -99,6 +99,20 @@ Erros seguem a RFC 7807 (`application/problem+json`):
 }
 ```
 
+## Estrutura
+
+```
+src/main/java/com/giovanni/orderhub/
+├── controller/    endpoints REST (produtos, pedidos, webhooks)
+├── service/       regras de negócio (estoque, pedidos)
+├── repository/    acesso ao banco (Spring Data JPA)
+├── model/         entidades e enums (Product, Order, OrderItem, Channel...)
+├── dto/           entrada e saída da API, por recurso
+├── exception/     exceções de negócio e tratamento global (RFC 7807)
+├── integration/   adapters dos marketplaces (alfashop/, betamarket/)
+└── config/        configurações do Spring
+```
+
 ## Configuração
 
 | Variável | Padrão |

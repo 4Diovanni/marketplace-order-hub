@@ -3,8 +3,8 @@ package com.giovanni.orderhub.integration.betamarket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.giovanni.orderhub.integration.OrderPayloadMapper;
 import com.giovanni.orderhub.integration.PayloadReader;
-import com.giovanni.orderhub.order.Channel;
-import com.giovanni.orderhub.order.IncomingOrder;
+import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
 

@@ -6,9 +6,9 @@ import static com.giovanni.orderhub.integration.MapperTestSupport.payloadReader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.giovanni.orderhub.order.Channel;
-import com.giovanni.orderhub.order.IncomingOrder;
-import com.giovanni.orderhub.shared.error.InvalidRequestException;
+import com.giovanni.orderhub.exception.InvalidRequestException;
+import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
