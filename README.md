@@ -65,7 +65,7 @@ Pedidos:
 
 | Método | Rota | Descrição | Respostas |
 |---|---|---|---|
-| `POST` | `/api/webhooks/{channel}/orders` | Recebe pedido de `alfashop` ou `betamarket`, cada um no seu formato | `201` · `400` payload inválido · `404` canal desconhecido · `422` SKU inexistente |
+| `POST` | `/api/webhooks/{channel}/orders` | Recebe pedido de `alfashop` ou `betamarket`, cada um no seu formato | `201` · `400` payload inválido · `404` canal desconhecido · `422` SKU inexistente · `429` limite do canal |
 | `GET` | `/api/orders?status=&channel=` | Lista paginada, mais recentes primeiro | `200` |
 | `GET` | `/api/orders/{id}` | Detalhe com itens | `200` · `404` |
 
@@ -87,17 +87,38 @@ curl -X POST http://localhost:8080/api/webhooks/betamarket/orders \
 
 **Regra de estoque (tudo ou nada):** se todos os itens têm estoque, o estoque é baixado e o pedido fica `CONFIRMED`. Se qualquer item falta, nada é baixado e o pedido fica `PENDING_STOCK`. O mesmo SKU em mais de uma linha do pedido é somado antes da checagem.
 
-Erros seguem a RFC 7807 (`application/problem+json`):
+O webhook responde com uma mensagem pronta para o seller, além do pedido:
+
+```json
+{
+  "code": "ORDER_CONFIRMED",
+  "message": "Pedido AS-10001 da AlfaShop confirmado. O estoque já foi reservado.",
+  "order": { "id": 1, "channel": "ALFASHOP", "externalOrderId": "AS-10001", "status": "CONFIRMED", "totalAmount": 169.70, "...": "..." }
+}
+```
+
+Cada marketplace tem um contrato próprio (formato, limite de itens, limite de requisições e comportamento de retry).
+Está tudo em [`docs/marketplaces.md`](docs/marketplaces.md). Acima do limite, o hub responde `429` com `Retry-After`.
+
+### Formato dos erros
+
+Erros seguem a RFC 7807 (`application/problem+json`) com dois campos extras: `code`, um código estável para o front
+decidir o que fazer, e `message`, um texto pronto para o seller. O `detail` fica com o detalhe técnico.
 
 ```json
 {
   "type": "about:blank",
-  "title": "Regra de negócio violada",
+  "title": "Estoque insuficiente",
   "status": 422,
   "detail": "Estoque insuficiente para o SKU 'BON-001': disponível 0, alteração pedida -1.",
-  "instance": "/api/products/BON-001/stock"
+  "instance": "/api/products/BON-001/stock",
+  "code": "INSUFFICIENT_STOCK",
+  "message": "O produto BON-001 tem só 0 unidade(s) em estoque."
 }
 ```
+
+Erro não previsto vira `500` com `code: INTERNAL_ERROR` e mensagem padrão, sem stack trace na resposta.
+O catálogo de códigos está em `enums/ErrorCode.java`.
 
 ## Estrutura
 
@@ -106,9 +127,10 @@ src/main/java/com/giovanni/orderhub/
 ├── controller/    endpoints REST (produtos, pedidos, webhooks)
 ├── service/       regras de negócio (estoque, pedidos)
 ├── repository/    acesso ao banco (Spring Data JPA)
-├── model/         entidades e enums (Product, Order, OrderItem, Channel...)
-├── dto/           entrada e saída da API, por recurso
-├── exception/     exceções de negócio e tratamento global (RFC 7807)
+├── model/         entidades (Product, Order, OrderItem) e IncomingOrder
+├── enums/         Channel, OrderStatus, ErrorCode, OrderResultCode
+├── dto/           entrada e saída da API, por recurso (product/, order/, error/)
+├── exception/     ApiException + subpastas handler/, product/, order/, integration/
 ├── integration/   adapters dos marketplaces (alfashop/, betamarket/)
 └── config/        configurações do Spring
 ```
