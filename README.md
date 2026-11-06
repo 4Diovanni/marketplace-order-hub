@@ -36,6 +36,43 @@ docker compose up -d mysql
 ./mvnw spring-boot:run
 ```
 
+## Endpoints
+
+Produtos (o banco já sobe com 10 produtos fictícios, ex.: `CAM-001`):
+
+| Método | Rota | Descrição | Respostas |
+|---|---|---|---|
+| `POST` | `/api/products` | Cria produto | `201` · `400` · `409` SKU duplicado |
+| `GET` | `/api/products?page=0&size=20&sort=sku` | Lista paginada | `200` |
+| `GET` | `/api/products/{sku}` | Detalhe | `200` · `404` |
+| `PUT` | `/api/products/{sku}` | Atualiza nome e preço | `200` · `400` · `404` |
+| `PATCH` | `/api/products/{sku}/stock` | Ajusta estoque com `{"delta": n}` | `200` · `404` · `422` se ficar negativo |
+| `DELETE` | `/api/products/{sku}` | Remove | `204` · `404` |
+
+Exemplo:
+
+```bash
+curl -X POST http://localhost:8080/api/products \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"MEI-001","name":"Meia esportiva","price":19.90,"stockQuantity":100}'
+
+curl -X PATCH http://localhost:8080/api/products/MEI-001/stock \
+  -H "Content-Type: application/json" \
+  -d '{"delta":-3}'
+```
+
+Erros seguem a RFC 7807 (`application/problem+json`):
+
+```json
+{
+  "type": "about:blank",
+  "title": "Regra de negócio violada",
+  "status": 422,
+  "detail": "Estoque insuficiente para o SKU 'BON-001': disponível 0, alteração pedida -1.",
+  "instance": "/api/products/BON-001/stock"
+}
+```
+
 ## Configuração
 
 | Variável | Padrão |
