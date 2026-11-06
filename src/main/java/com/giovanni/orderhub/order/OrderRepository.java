@@ -1,0 +1,23 @@
+package com.giovanni.orderhub.order;
+
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+public interface OrderRepository extends JpaRepository<Order, Long> {
+
+    /** Filtros opcionais: {@code null} em status ou canal significa "qualquer um". */
+    @Query("""
+            select o from Order o
+            where (:status is null or o.status = :status)
+              and (:channel is null or o.channel = :channel)
+            """)
+    Page<Order> search(@Param("status") OrderStatus status, @Param("channel") Channel channel, Pageable pageable);
+
+    @EntityGraph(attributePaths = "items")
+    Optional<Order> findWithItemsById(Long id);
+}

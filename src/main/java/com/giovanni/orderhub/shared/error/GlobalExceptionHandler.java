@@ -39,6 +39,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Regra de negócio violada", ex.getMessage());
     }
 
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
+        ProblemDetail body = problem(HttpStatus.BAD_REQUEST, "Dados inválidos", ex.getMessage());
+        body.setProperty("errors", ex.getViolations());
+        return body;
+    }
+
     /** Última barreira para violações de constraint que passaram pelas checagens do service (ex.: corrida entre duas requisições). */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex) {
@@ -64,6 +71,4 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
-    public record FieldViolation(String field, String message) {
-    }
 }

@@ -62,6 +62,10 @@ public class Product {
         this.price = price;
     }
 
+    public boolean hasStockFor(int quantity) {
+        return stockQuantity >= quantity;
+    }
+
     /**
      * Soma {@code delta} ao estoque (negativo para retirar).
      *
