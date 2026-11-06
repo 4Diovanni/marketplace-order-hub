@@ -4,7 +4,8 @@ package com.giovanni.orderhub.enums;
 public enum OrderResultCode {
 
     ORDER_CONFIRMED("Pedido %s da %s confirmado. O estoque já foi reservado."),
-    ORDER_PENDING_STOCK("Pedido %s da %s recebido, mas aguardando estoque. Nenhum item foi reservado ainda.");
+    ORDER_PENDING_STOCK("Pedido %s da %s recebido, mas aguardando estoque. Nenhum item foi reservado ainda."),
+    ORDER_ALREADY_RECEIVED("Pedido %s da %s já tinha sido recebido. Nada foi alterado.");
 
     private final String messageTemplate;
 

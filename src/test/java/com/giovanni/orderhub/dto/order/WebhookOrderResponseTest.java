@@ -31,4 +31,13 @@ class WebhookOrderResponseTest {
         assertThat(response.code()).isEqualTo("ORDER_PENDING_STOCK");
         assertThat(response.message()).contains("BM-778", "BetaMarket", "aguardando estoque");
     }
+
+    @Test
+    void shouldBuildAlreadyReceivedMessageForSeller() {
+        WebhookOrderResponse response = WebhookOrderResponse.alreadyReceived(orderWithStatus(OrderStatus.CONFIRMED));
+
+        assertThat(response.code()).isEqualTo("ORDER_ALREADY_RECEIVED");
+        assertThat(response.message()).isEqualTo("Pedido BM-778 da BetaMarket já tinha sido recebido. Nada foi alterado.");
+        assertThat(response.order().status()).isEqualTo(OrderStatus.CONFIRMED);
+    }
 }

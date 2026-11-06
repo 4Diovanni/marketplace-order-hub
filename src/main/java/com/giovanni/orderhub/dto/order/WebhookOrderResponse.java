@@ -9,7 +9,15 @@ import com.giovanni.orderhub.enums.OrderResultCode;
 public record WebhookOrderResponse(String code, String message, OrderResponse order) {
 
     public static WebhookOrderResponse from(OrderResponse order) {
-        OrderResultCode result = OrderResultCode.from(order.status());
+        return withResult(OrderResultCode.from(order.status()), order);
+    }
+
+    /** The marketplace sent an order that was already saved: nothing changed, the original order goes back. */
+    public static WebhookOrderResponse alreadyReceived(OrderResponse order) {
+        return withResult(OrderResultCode.ORDER_ALREADY_RECEIVED, order);
+    }
+
+    private static WebhookOrderResponse withResult(OrderResultCode result, OrderResponse order) {
         String message = result.formatMessage(order.externalOrderId(), order.channel());
         return new WebhookOrderResponse(result.name(), message, order);
     }

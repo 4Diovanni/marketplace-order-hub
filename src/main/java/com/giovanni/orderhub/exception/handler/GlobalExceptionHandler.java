@@ -9,6 +9,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -66,6 +67,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ProblemDetail> handleDataIntegrity(DataIntegrityViolationException ex) {
         log.warn("Violação de integridade no banco: {}", ex.getMostSpecificCause().getMessage());
         return respond(problem(ErrorCode.DATA_CONFLICT, "A operação conflita com dados já existentes."));
+    }
+
+    /**
+     * The same product was changed by another operation at the same time, even after the retries.
+     * Answers 503 because it is temporary: marketplaces resend the order on 5xx (see docs/marketplaces.md).
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ProblemDetail> handleOptimisticLock(OptimisticLockingFailureException ex) {
+        log.warn("Conflito de atualização simultânea: {}", ex.getMessage());
+        return respond(problem(ErrorCode.CONCURRENT_STOCK_UPDATE, "Outra transação alterou o mesmo registro."));
     }
 
     /** Any unexpected error: logs everything but returns only the standard message (no stack trace in the response). */

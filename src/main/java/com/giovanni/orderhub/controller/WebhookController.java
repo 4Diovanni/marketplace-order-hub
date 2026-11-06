@@ -1,7 +1,7 @@
 package com.giovanni.orderhub.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.giovanni.orderhub.dto.order.OrderResponse;
+import com.giovanni.orderhub.dto.order.OrderReceipt;
 import com.giovanni.orderhub.dto.order.WebhookOrderResponse;
 import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.integration.OrderPayloadMappers;
@@ -40,12 +40,15 @@ public class WebhookController {
         rateLimitService.checkLimit(channel);
 
         IncomingOrder incoming = mappers.forChannel(channel).toIncomingOrder(payload);
-        OrderResponse order = orderService.receive(incoming);
+        OrderReceipt receipt = orderService.receive(incoming);
+        if (receipt.isDuplicate()) {
+            return ResponseEntity.ok(WebhookOrderResponse.alreadyReceived(receipt.order()));
+        }
 
         URI location = ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/api/orders/{id}")
-                .buildAndExpand(order.id())
+                .buildAndExpand(receipt.order().id())
                 .toUri();
-        return ResponseEntity.created(location).body(WebhookOrderResponse.from(order));
+        return ResponseEntity.created(location).body(WebhookOrderResponse.from(receipt.order()));
     }
 }
