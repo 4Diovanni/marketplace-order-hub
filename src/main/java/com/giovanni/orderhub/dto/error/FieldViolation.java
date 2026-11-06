@@ -1,5 +1,5 @@
 package com.giovanni.orderhub.dto.error;
 
-/** Um campo inválido e o motivo, usado na lista {@code errors} das respostas 400. */
+/** An invalid field and the reason, used in the {@code errors} list of 400 responses. */
 public record FieldViolation(String field, String message) {
 }

@@ -38,10 +38,10 @@ public class OrderService {
     }
 
     /**
-     * Registra um pedido aplicando a regra tudo-ou-nada:
-     * se todos os itens têm estoque, baixa o estoque e confirma; se algum falta, não baixa nada e deixa pendente.
+     * Records an order using the all-or-nothing rule:
+     * if every item has stock, reserves it and confirms; if any is missing, reserves nothing and leaves it pending.
      *
-     * @throws UnknownSkuException se algum SKU do pedido não existe no cadastro (nada é gravado).
+     * @throws UnknownSkuException if any SKU in the order is not in the catalog (nothing is saved).
      */
     @Transactional
     public OrderResponse receive(IncomingOrder incoming) {
@@ -68,7 +68,7 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
-    /** O mesmo SKU pode vir em mais de uma linha do pedido; a checagem de estoque precisa do total por SKU. */
+    /** The same SKU can appear in more than one order line; the stock check needs the total per SKU. */
     private Map<String, Integer> totalQuantityPerSku(List<IncomingOrder.Item> items) {
         Map<String, Integer> quantityBySku = new LinkedHashMap<>();
         for (IncomingOrder.Item item : items) {
@@ -91,7 +91,7 @@ public class OrderService {
         return productBySku;
     }
 
-    /** Baixa o estoque de todos os itens, ou de nenhum. */
+    /** Reserves stock for every item, or for none. */
     private OrderStatus reserveStockIfAvailable(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
         if (!hasStockForAllItems(quantityBySku, productBySku)) {
             return OrderStatus.PENDING_STOCK;

@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    /** Filtros opcionais: {@code null} em status ou canal significa "qualquer um". */
+    /** Optional filters: {@code null} status or channel means "any". */
     @Query("""
             select o from Order o
             where (:status is null or o.status = :status)

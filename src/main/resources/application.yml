@@ -14,7 +14,7 @@ spring:
     locations: classpath:db/migration
 
 orderhub:
-  # Limite de requisições por minuto de cada marketplace (contrato de cada canal em docs/marketplaces.md).
+  # Requests-per-minute limit of each marketplace (each channel's contract is in docs/marketplaces.md).
   rate-limit:
     requests-per-minute:
       alfashop: 60

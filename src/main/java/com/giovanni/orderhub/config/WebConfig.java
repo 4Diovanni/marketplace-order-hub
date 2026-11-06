@@ -3,7 +3,7 @@ package com.giovanni.orderhub.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
-/** Serializa {@code Page} como DTO estável ({@code content} + {@code page}), em vez do formato interno do {@code PageImpl}. */
+/** Serializes {@code Page} as a stable DTO ({@code content} + {@code page}) instead of the {@code PageImpl} format. */
 @Configuration
 @EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class WebConfig {

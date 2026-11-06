@@ -37,7 +37,7 @@ public class BetaMarketMapper implements OrderPayloadMapper {
                         .toList());
     }
 
-    /** 5990 centavos → 59.90 */
+    /** 5990 cents → 59.90 */
     static BigDecimal centsToReais(long cents) {
         return BigDecimal.valueOf(cents, CENTS_SCALE);
     }

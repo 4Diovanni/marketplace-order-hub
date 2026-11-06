@@ -3,10 +3,10 @@ package com.giovanni.orderhub.enums;
 import org.springframework.http.HttpStatus;
 
 /**
- * Catálogo de erros da API, num lugar só.
+ * The API error catalog, in one place.
  *
- * <p>Cada código tem o status HTTP, um título curto e a mensagem que o seller vê no front.
- * O {@code code} é estável: o front pode usá-lo para decidir o que mostrar sem depender do texto.
+ * <p>Each code has the HTTP status, a short title and the message the seller sees in the front end.
+ * The {@code code} is stable: the front end can use it to decide what to show without depending on the text.
  */
 public enum ErrorCode {
 
@@ -62,7 +62,7 @@ public enum ErrorCode {
         return title;
     }
 
-    /** Preenche a mensagem para o seller com os valores do caso (SKU, canal...). */
+    /** Fills the seller message with the values of the case (SKU, channel...). */
     public String formatMessage(Object... args) {
         return messageTemplate.formatted(args);
     }

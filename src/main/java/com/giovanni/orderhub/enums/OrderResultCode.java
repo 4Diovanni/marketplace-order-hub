@@ -1,6 +1,6 @@
 package com.giovanni.orderhub.enums;
 
-/** Mensagens de sucesso do webhook de pedidos, para o seller ver o resultado de cada pedido importado. */
+/** Success messages of the order webhook, so the seller can see the result of each imported order. */
 public enum OrderResultCode {
 
     ORDER_CONFIRMED("Pedido %s da %s confirmado. O estoque já foi reservado."),

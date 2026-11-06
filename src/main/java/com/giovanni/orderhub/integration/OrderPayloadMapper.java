@@ -6,13 +6,13 @@ import com.giovanni.orderhub.exception.integration.InvalidPayloadException;
 import com.giovanni.orderhub.model.IncomingOrder;
 
 /**
- * Converte o JSON de um marketplace para o modelo interno (Strategy).
- * Para integrar um marketplace novo basta criar outra implementação anotada com {@code @Component}.
+ * Converts a marketplace's JSON into the internal model (Strategy).
+ * To integrate a new marketplace, create another implementation annotated with {@code @Component}.
  */
 public interface OrderPayloadMapper {
 
     Channel channel();
 
-    /** @throws InvalidPayloadException se o payload não tem o formato esperado. */
+    /** @throws InvalidPayloadException if the payload does not have the expected format. */
     IncomingOrder toIncomingOrder(JsonNode payload);
 }

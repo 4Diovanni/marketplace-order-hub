@@ -40,7 +40,8 @@ Maintenance PRs must be **minimal and designed for the lowest possible impact on
 ## Project
 
 - Java 21 · Spring Boot 3 · Maven · MySQL 8 · Flyway.
-- Language: code and this file in English; README, issues, PRs, and user-facing messages in Portuguese.
+- Language: code, **code comments** (including Javadoc, YAML, SQL, and Dockerfile comments), and this file in English; README, issues, PRs, and user-facing messages in Portuguese.
+- Flyway migrations already merged into `main` are immutable, comments included: editing one changes its checksum and breaks `validate` on every database that already ran it. Fix them with a new migration.
 - Packages are organized **by layer** under `com.giovanni.orderhub`. Every new class goes into its layer's folder:
 
 | Package | What goes there |

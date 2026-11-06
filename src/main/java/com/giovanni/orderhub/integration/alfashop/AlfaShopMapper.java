@@ -37,7 +37,7 @@ public class AlfaShopMapper implements OrderPayloadMapper {
                         .toList());
     }
 
-    /** O JSON perde o zero à direita (59.90 vira 59.9); padroniza em 2 casas. Mais de 2 casas já foi barrado no @Digits. */
+    /** JSON drops the trailing zero (59.90 becomes 59.9); normalize to 2 decimals. @Digits rejects more than 2. */
     private static BigDecimal toMoney(BigDecimal value) {
         return value.setScale(PRICE_SCALE, RoundingMode.UNNECESSARY);
     }

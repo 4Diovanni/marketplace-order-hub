@@ -5,8 +5,8 @@ import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Limite de requisições por minuto de cada marketplace, lido de {@code orderhub.rate-limit} no application.yml.
- * Cada canal tem o seu, porque cada contrato de API é diferente (ver docs/marketplaces.md).
+ * Requests-per-minute limit of each marketplace, read from {@code orderhub.rate-limit} in application.yml.
+ * Each channel has its own, because each API contract is different (see docs/marketplaces.md).
  */
 @ConfigurationProperties(prefix = "orderhub.rate-limit")
 public record RateLimitProperties(Map<Channel, Integer> requestsPerMinute) {

@@ -52,7 +52,7 @@ public class Order {
     private List<OrderItem> items = new ArrayList<>();
 
     protected Order() {
-        // exigido pelo JPA
+        // required by JPA
     }
 
     private Order(IncomingOrder incoming, OrderStatus status) {

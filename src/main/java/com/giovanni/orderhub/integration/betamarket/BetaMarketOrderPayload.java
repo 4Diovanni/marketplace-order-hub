@@ -10,8 +10,8 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Formato fictício da BetaMarket: aninhado, snake_case, valores em centavos e nome do cliente em dois campos.
- * Regras do contrato: no máximo {@value #MAX_LINES} linhas por pedido (ver docs/marketplaces.md).
+ * Fictional BetaMarket format: nested, snake_case, amounts in cents and the customer name in two fields.
+ * Contract rules: at most {@value #MAX_LINES} lines per order (see docs/marketplaces.md).
  */
 public record BetaMarketOrderPayload(@NotNull @Valid OrderData order) {
 

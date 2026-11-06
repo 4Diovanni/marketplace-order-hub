@@ -3,8 +3,8 @@ package com.giovanni.orderhub.dto.order;
 import com.giovanni.orderhub.enums.OrderResultCode;
 
 /**
- * Resposta do webhook: o pedido gravado e uma mensagem pronta para o seller ver no front.
- * O {@code code} é estável para o front decidir ícone/cor; a {@code message} é o texto exibido.
+ * Webhook response: the saved order and a message ready for the seller to see in the front end.
+ * The {@code code} is stable so the front end can pick icon/color; the {@code message} is the displayed text.
  */
 public record WebhookOrderResponse(String code, String message, OrderResponse order) {
 

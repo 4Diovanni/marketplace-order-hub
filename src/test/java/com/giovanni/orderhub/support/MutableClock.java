@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 
-/** Relógio que o teste avança manualmente, para testar regras de tempo sem {@code Thread.sleep}. */
+/** Clock that the test moves forward by hand, to test time-based rules without {@code Thread.sleep}. */
 public class MutableClock extends Clock {
 
     private Instant now;

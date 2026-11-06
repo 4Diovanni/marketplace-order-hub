@@ -21,12 +21,12 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
- * Transforma qualquer erro numa resposta RFC 7807 ({@link ProblemDetail}) com o mesmo formato:
+ * Turns any error into an RFC 7807 response ({@link ProblemDetail}) with the same shape:
  *
  * <ul>
- *   <li>{@code code}: código estável do {@link ErrorCode}, para o front decidir o que fazer;</li>
- *   <li>{@code message}: texto pronto para mostrar ao seller;</li>
- *   <li>{@code detail}: detalhe técnico, para suporte e logs.</li>
+ *   <li>{@code code}: stable {@link ErrorCode} name, so the front end can decide what to do;</li>
+ *   <li>{@code message}: text ready to show to the seller;</li>
+ *   <li>{@code detail}: technical detail, for support and logs.</li>
  * </ul>
  */
 @RestControllerAdvice
@@ -61,14 +61,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(body);
     }
 
-    /** Última barreira para violações de constraint que passaram pelas checagens do service (ex.: corrida entre duas requisições). */
+    /** Last defense for constraint violations that got past the service checks (e.g. a race between two requests). */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ProblemDetail> handleDataIntegrity(DataIntegrityViolationException ex) {
         log.warn("Violação de integridade no banco: {}", ex.getMostSpecificCause().getMessage());
         return respond(problem(ErrorCode.DATA_CONFLICT, "A operação conflita com dados já existentes."));
     }
 
-    /** Qualquer erro não previsto: loga tudo, mas devolve só a mensagem padrão (nada de stack trace na resposta). */
+    /** Any unexpected error: logs everything but returns only the standard message (no stack trace in the response). */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex) {
         log.error("Erro inesperado", ex);
@@ -88,8 +88,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Erros tratados pelo próprio Spring (JSON malformado, rota inexistente, método HTTP errado...).
-     * Mantém o status e o detalhe do Spring e acrescenta {@code code} e {@code message} padrão.
+     * Errors handled by Spring itself (malformed JSON, unknown route, wrong HTTP method...).
+     * Keeps Spring's status and detail and adds the default {@code code} and {@code message}.
      */
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(

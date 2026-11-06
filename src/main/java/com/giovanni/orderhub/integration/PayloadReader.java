@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
-/** Converte o JSON bruto no record tipado de cada marketplace e aplica o Bean Validation desse record. */
+/** Converts the raw JSON into each marketplace's typed record and applies that record's Bean Validation. */
 @Component
 public class PayloadReader {
 

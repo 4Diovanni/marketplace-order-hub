@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(RateLimitProperties.class)
 public class AppConfig {
 
-    /** Relógio injetável: em produção usa o do sistema; nos testes, um relógio controlado. */
+    /** Injectable clock: the system clock in production, a controlled clock in tests. */
     @Bean
     public Clock clock() {
         return Clock.systemUTC();

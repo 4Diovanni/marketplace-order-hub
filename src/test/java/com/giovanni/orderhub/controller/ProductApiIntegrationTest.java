@@ -16,7 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-/** Testa a API de produtos de ponta a ponta: HTTP → controller → service → MySQL real (Flyway incluso). */
+/** Tests the product API end to end: HTTP → controller → service → real MySQL (Flyway included). */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ProductApiIntegrationTest extends MySqlContainerSupport {
 

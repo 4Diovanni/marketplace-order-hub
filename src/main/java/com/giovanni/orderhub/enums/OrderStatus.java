@@ -1,8 +1,8 @@
 package com.giovanni.orderhub.enums;
 
 public enum OrderStatus {
-    /** Todos os itens tinham estoque e o estoque já foi baixado. */
+    /** Every item had stock and the stock was already reserved. */
     CONFIRMED,
-    /** Algum item não tinha estoque suficiente; nada foi baixado. */
+    /** Some item did not have enough stock; nothing was reserved. */
     PENDING_STOCK
 }

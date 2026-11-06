@@ -2,6 +2,6 @@ package com.giovanni.orderhub.dto.product;
 
 import jakarta.validation.constraints.NotNull;
 
-/** {@code delta} positivo repõe estoque, negativo retira. */
+/** A positive {@code delta} restocks; a negative one removes stock. */
 public record StockAdjustmentRequest(@NotNull Integer delta) {
 }

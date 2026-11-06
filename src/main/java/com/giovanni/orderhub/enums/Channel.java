@@ -3,8 +3,8 @@ package com.giovanni.orderhub.enums;
 import com.giovanni.orderhub.exception.integration.UnknownChannelException;
 
 /**
- * Marketplaces fictícios integrados ao hub.
- * O {@code slug} é o trecho usado na URL do webhook; o {@code displayName} é o nome mostrado para o seller.
+ * Fictional marketplaces integrated with the hub.
+ * The {@code slug} is the part used in the webhook URL; the {@code displayName} is the name shown to the seller.
  */
 public enum Channel {
 
@@ -27,7 +27,7 @@ public enum Channel {
         return displayName;
     }
 
-    /** @throws UnknownChannelException se nenhum canal usa esse slug. */
+    /** @throws UnknownChannelException if no channel uses this slug. */
     public static Channel fromSlug(String slug) {
         for (Channel channel : values()) {
             if (channel.slug.equalsIgnoreCase(slug)) {

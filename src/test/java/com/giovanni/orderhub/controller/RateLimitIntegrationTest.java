@@ -14,7 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-/** Contexto próprio com limite baixo na BetaMarket, para provocar o 429 sem afetar os outros testes. */
+/** Separate context with a low BetaMarket limit, to trigger the 429 without affecting other tests. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "orderhub.rate-limit.requests-per-minute.betamarket=2")
 class RateLimitIntegrationTest extends MySqlContainerSupport {

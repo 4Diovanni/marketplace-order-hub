@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-/** Ponto de entrada dos marketplaces: cada canal manda o pedido no próprio formato para a mesma rota. */
+/** Entry point for marketplaces: each channel sends the order in its own format to the same route. */
 @RestController
 @RequestMapping("/api/webhooks")
 public class WebhookController {

@@ -11,10 +11,10 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /**
- * Limita quantas requisições cada marketplace pode fazer por minuto (janela fixa de 1 minuto).
+ * Limits how many requests each marketplace can make per minute (fixed 1-minute window).
  *
- * <p>O estado fica em memória, o que vale para uma instância da aplicação.
- * Com várias instâncias, o contador teria que ir para um lugar compartilhado (ex.: Redis).
+ * <p>State is kept in memory, which holds for a single application instance.
+ * With several instances, the counter would have to move to shared storage (e.g. Redis).
  */
 @Service
 public class RateLimitService {
@@ -31,7 +31,7 @@ public class RateLimitService {
         requireLimitForEveryChannel();
     }
 
-    /** @throws RateLimitExceededException se o canal já usou todas as requisições da janela atual. */
+    /** @throws RateLimitExceededException if the channel already used every request of the current window. */
     public synchronized void checkLimit(Channel channel) {
         Instant now = clock.instant();
         Window window = currentWindow(channel, now);
@@ -53,13 +53,13 @@ public class RateLimitService {
         return window;
     }
 
-    /** Arredonda para cima e nunca devolve zero: o marketplace espera um número inteiro de segundos no Retry-After. */
+    /** Rounds up and never returns zero: the marketplace expects a whole number of seconds in Retry-After. */
     private static long secondsUntilWindowEnds(Window window, Instant now) {
         long millis = Duration.between(now, window.end()).toMillis();
         return Math.max(1, (millis + 999) / 1000);
     }
 
-    /** Falha na inicialização se algum canal ficou sem limite configurado, em vez de descobrir em produção. */
+    /** Fails at startup if any channel has no configured limit, instead of finding out in production. */
     private void requireLimitForEveryChannel() {
         for (Channel channel : Channel.values()) {
             Integer limit = limitByChannel.get(channel);

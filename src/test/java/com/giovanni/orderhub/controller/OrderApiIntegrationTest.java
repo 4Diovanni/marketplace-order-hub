@@ -16,7 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-/** Fluxo de pedido de ponta a ponta: webhook → mapper → regra de estoque → MySQL → consulta. */
+/** End-to-end order flow: webhook → mapper → stock rule → MySQL → query. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class OrderApiIntegrationTest extends MySqlContainerSupport {
 

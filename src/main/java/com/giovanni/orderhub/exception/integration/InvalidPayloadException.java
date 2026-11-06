@@ -6,7 +6,7 @@ import com.giovanni.orderhub.enums.ErrorCode;
 import com.giovanni.orderhub.exception.ApiException;
 import java.util.List;
 
-/** O JSON enviado pelo marketplace não segue o contrato do canal. Vira HTTP 400 com a lista de campos. */
+/** The JSON sent by the marketplace does not follow the channel contract. Becomes HTTP 400 with the field list. */
 public class InvalidPayloadException extends ApiException {
 
     private final List<FieldViolation> violations;

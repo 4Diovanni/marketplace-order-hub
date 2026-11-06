@@ -11,8 +11,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Formato fictício da AlfaShop: plano, camelCase, valores em reais e nome do cliente em um campo.
- * Regras do contrato: no máximo {@value #MAX_ITEMS} itens por pedido (ver docs/marketplaces.md).
+ * Fictional AlfaShop format: flat, camelCase, amounts in reais and the customer name in one field.
+ * Contract rules: at most {@value #MAX_ITEMS} items per order (see docs/marketplaces.md).
  */
 public record AlfaShopOrderPayload(
         @NotBlank String orderId,

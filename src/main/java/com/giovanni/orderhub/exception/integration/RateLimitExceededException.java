@@ -4,7 +4,7 @@ import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.enums.ErrorCode;
 import com.giovanni.orderhub.exception.ApiException;
 
-/** O canal passou do limite de requisições da janela atual. Vira HTTP 429 com o header {@code Retry-After}. */
+/** The channel went over the request limit of the current window. Becomes HTTP 429 with {@code Retry-After}. */
 public class RateLimitExceededException extends ApiException {
 
     private final long retryAfterSeconds;
