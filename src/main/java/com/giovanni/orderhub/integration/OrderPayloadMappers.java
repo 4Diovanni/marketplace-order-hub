@@ -13,12 +13,12 @@ public class OrderPayloadMappers {
     private final Map<Channel, OrderPayloadMapper> mappersByChannel = new EnumMap<>(Channel.class);
 
     public OrderPayloadMappers(List<OrderPayloadMapper> mappers) {
-        mappers.forEach(mapper -> {
-            OrderPayloadMapper previous = mappersByChannel.put(mapper.channel(), mapper);
-            if (previous != null) {
+        for (OrderPayloadMapper mapper : mappers) {
+            if (mappersByChannel.containsKey(mapper.channel())) {
                 throw new IllegalStateException("Mais de um mapper para o canal " + mapper.channel());
             }
-        });
+            mappersByChannel.put(mapper.channel(), mapper);
+        }
     }
 
     public OrderPayloadMapper forChannel(Channel channel) {

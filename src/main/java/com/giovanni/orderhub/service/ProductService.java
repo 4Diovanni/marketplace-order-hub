@@ -30,6 +30,7 @@ public class ProductService {
         if (productRepository.existsBySku(request.sku())) {
             throw new DuplicateSkuException(request.sku());
         }
+
         Product product = new Product(request.sku(), request.name(), request.price(), request.stockQuantity());
         Product saved = productRepository.saveAndFlush(product);
         log.info("Produto criado: sku={}", saved.getSku());

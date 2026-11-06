@@ -58,9 +58,18 @@ public class Order {
         this.externalOrderId = incoming.externalOrderId();
         this.customerName = incoming.customerName();
         this.status = status;
-        incoming.items().forEach(item ->
-                items.add(new OrderItem(this, item.sku(), item.quantity(), item.unitPrice())));
-        this.totalAmount = items.stream().map(OrderItem::subtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+        for (IncomingOrder.Item item : incoming.items()) {
+            items.add(new OrderItem(this, item.sku(), item.quantity(), item.unitPrice()));
+        }
+        this.totalAmount = calculateTotal();
+    }
+
+    private BigDecimal calculateTotal() {
+        BigDecimal total = BigDecimal.ZERO;
+        for (OrderItem item : items) {
+            total = total.add(item.subtotal());
+        }
+        return total;
     }
 
     public static Order of(IncomingOrder incoming, OrderStatus status) {
