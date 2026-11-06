@@ -24,6 +24,9 @@ Format: `<type>/<issue number>-<short-description>`
 ## Pull requests
 
 - One PR per branch, small and complete: code, tests, and README updates when relevant.
+- Every PR that adds or changes behavior updates `docs/roteiro-de-testes.md`: setup steps if they changed, a manual
+  test (command + expected status + key part of the response) for each new endpoint or rule, copied from a real run,
+  and a line in its history table.
 - The PR body closes its issues (`Closes #n`) and says how it was tested.
 - `main` only receives code through a PR with green CI.
 

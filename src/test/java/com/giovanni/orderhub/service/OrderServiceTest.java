@@ -3,108 +3,122 @@ package com.giovanni.orderhub.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.giovanni.orderhub.dto.order.OrderReceipt;
 import com.giovanni.orderhub.dto.order.OrderResponse;
 import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.enums.OrderStatus;
-import com.giovanni.orderhub.exception.order.UnknownSkuException;
 import com.giovanni.orderhub.model.IncomingOrder;
 import com.giovanni.orderhub.model.Order;
-import com.giovanni.orderhub.model.Product;
 import com.giovanni.orderhub.repository.OrderRepository;
-import com.giovanni.orderhub.repository.ProductRepository;
 import java.math.BigDecimal;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-    private static final BigDecimal PRICE = new BigDecimal("10.00");
+    private static final String EXTERNAL_ID = "AS-1";
 
     @Mock
     private OrderRepository orderRepository;
 
     @Mock
-    private ProductRepository productRepository;
+    private OrderRecordingService orderRecordingService;
 
     @InjectMocks
     private OrderService orderService;
 
-    private Product shirt;
-    private Product cap;
+    private final IncomingOrder incoming = new IncomingOrder(Channel.ALFASHOP, EXTERNAL_ID, "Cliente",
+            List.of(new IncomingOrder.Item("CAM-001", 1, new BigDecimal("10.00"))));
 
-    @BeforeEach
-    void setUp() {
-        shirt = new Product("CAM-001", "Camiseta", PRICE, 5);
-        cap = new Product("BON-001", "Boné", PRICE, 1);
+    private final OrderResponse savedOrder = new OrderResponse(1L, Channel.ALFASHOP, EXTERNAL_ID,
+            OrderStatus.CONFIRMED, "Cliente", new BigDecimal("10.00"), null, List.of());
+
+    private void stubExistingOrder(Optional<Order> first, Optional<Order> second) {
+        when(orderRepository.findWithItemsByChannelAndExternalOrderId(Channel.ALFASHOP, EXTERNAL_ID))
+                .thenReturn(first, second);
     }
 
-    private void stubSave() {
-        when(orderRepository.saveAndFlush(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+    private Order storedOrder() {
+        return Order.of(incoming, OrderStatus.CONFIRMED);
     }
 
-    private static IncomingOrder orderWith(IncomingOrder.Item... items) {
-        return new IncomingOrder(Channel.ALFASHOP, "AS-1", "Cliente", List.of(items));
-    }
-
-    private static IncomingOrder.Item item(String sku, int quantity) {
-        return new IncomingOrder.Item(sku, quantity, PRICE);
-    }
-
-    @Test
-    void shouldConfirmAndDecreaseStockWhenAllItemsAreAvailable() {
-        when(productRepository.findAllBySkuIn(anyCollection())).thenReturn(List.of(shirt, cap));
-        stubSave();
-
-        OrderResponse response = orderService.receive(orderWith(item("CAM-001", 2), item("BON-001", 1)));
-
-        assertThat(response.status()).isEqualTo(OrderStatus.CONFIRMED);
-        assertThat(response.totalAmount()).isEqualByComparingTo("30.00");
-        assertThat(shirt.getStockQuantity()).isEqualTo(3);
-        assertThat(cap.getStockQuantity()).isZero();
+    private static ObjectOptimisticLockingFailureException optimisticLockFailure() {
+        return new ObjectOptimisticLockingFailureException("Product", 1L);
     }
 
     @Test
-    void shouldSetPendingStockAndKeepAllStockWhenAnyItemIsMissing() {
-        when(productRepository.findAllBySkuIn(anyCollection())).thenReturn(List.of(shirt, cap));
-        stubSave();
+    void shouldRecordNewOrderWhenItWasNotReceivedBefore() {
+        stubExistingOrder(Optional.empty(), Optional.empty());
+        when(orderRecordingService.record(incoming)).thenReturn(savedOrder);
 
-        OrderResponse response = orderService.receive(orderWith(item("CAM-001", 2), item("BON-001", 2)));
+        OrderReceipt receipt = orderService.receive(incoming);
 
-        assertThat(response.status()).isEqualTo(OrderStatus.PENDING_STOCK);
-        assertThat(shirt.getStockQuantity()).isEqualTo(5);
-        assertThat(cap.getStockQuantity()).isEqualTo(1);
+        assertThat(receipt.isDuplicate()).isFalse();
+        assertThat(receipt.order()).isEqualTo(savedOrder);
     }
 
     @Test
-    void shouldSumRepeatedSkuLinesBeforeCheckingStock() {
-        when(productRepository.findAllBySkuIn(anyCollection())).thenReturn(List.of(shirt));
-        stubSave();
+    void shouldReturnOriginalOrderWithoutRecordingWhenOrderWasAlreadyReceived() {
+        stubExistingOrder(Optional.of(storedOrder()), Optional.empty());
 
-        OrderResponse response = orderService.receive(orderWith(item("CAM-001", 3), item("CAM-001", 3)));
+        OrderReceipt receipt = orderService.receive(incoming);
 
-        assertThat(response.status()).isEqualTo(OrderStatus.PENDING_STOCK);
-        assertThat(shirt.getStockQuantity()).isEqualTo(5);
+        assertThat(receipt.isDuplicate()).isTrue();
+        assertThat(receipt.order().externalOrderId()).isEqualTo(EXTERNAL_ID);
+        verify(orderRecordingService, never()).record(any());
     }
 
     @Test
-    void shouldRejectOrderWithUnknownSkuWithoutSavingAnything() {
-        when(productRepository.findAllBySkuIn(anyCollection())).thenReturn(List.of(shirt));
+    void shouldReturnOrderSavedByConcurrentRequestWhenUniqueKeyFails() {
+        stubExistingOrder(Optional.empty(), Optional.of(storedOrder()));
+        when(orderRecordingService.record(incoming)).thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-        assertThatThrownBy(() -> orderService.receive(orderWith(item("CAM-001", 1), item("XYZ-999", 1))))
-                .isInstanceOf(UnknownSkuException.class)
-                .hasMessageContaining("XYZ-999");
-        assertThat(shirt.getStockQuantity()).isEqualTo(5);
-        verify(orderRepository, never()).saveAndFlush(any());
+        OrderReceipt receipt = orderService.receive(incoming);
+
+        assertThat(receipt.isDuplicate()).isTrue();
+        assertThat(receipt.order().externalOrderId()).isEqualTo(EXTERNAL_ID);
+    }
+
+    @Test
+    void shouldRethrowIntegrityErrorWhenNoOrderWithSameIdExists() {
+        stubExistingOrder(Optional.empty(), Optional.empty());
+        DataIntegrityViolationException failure = new DataIntegrityViolationException("other constraint");
+        when(orderRecordingService.record(incoming)).thenThrow(failure);
+
+        assertThatThrownBy(() -> orderService.receive(incoming)).isSameAs(failure);
+    }
+
+    @Test
+    void shouldRetryWhenStockWasChangedByAnotherOrderAtTheSameTime() {
+        stubExistingOrder(Optional.empty(), Optional.empty());
+        when(orderRecordingService.record(incoming)).thenThrow(optimisticLockFailure()).thenReturn(savedOrder);
+
+        OrderReceipt receipt = orderService.receive(incoming);
+
+        assertThat(receipt.order()).isEqualTo(savedOrder);
+        verify(orderRecordingService, times(2)).record(incoming);
+    }
+
+    @Test
+    void shouldGiveUpAfterMaxAttemptsWhenStockKeepsChanging() {
+        stubExistingOrder(Optional.empty(), Optional.empty());
+        when(orderRecordingService.record(incoming)).thenThrow(optimisticLockFailure());
+
+        assertThatThrownBy(() -> orderService.receive(incoming))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+        verify(orderRecordingService, times(OrderService.MAX_STOCK_UPDATE_ATTEMPTS)).record(incoming);
     }
 }

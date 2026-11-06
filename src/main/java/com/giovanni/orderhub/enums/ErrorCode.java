@@ -39,6 +39,9 @@ public enum ErrorCode {
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Limite de requisições atingido",
             "A %s enviou muitos pedidos em pouco tempo. Eles voltam a ser aceitos em %d segundo(s)."),
 
+    CONCURRENT_STOCK_UPDATE(HttpStatus.SERVICE_UNAVAILABLE, "Estoque em atualização",
+            "O estoque estava sendo atualizado por outra operação ao mesmo tempo. Tente de novo em alguns segundos."),
+
     REQUEST_NOT_SUPPORTED(HttpStatus.BAD_REQUEST, "Operação não suportada",
             "Esta operação não é suportada."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Erro inesperado",

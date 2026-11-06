@@ -1,24 +1,18 @@
 package com.giovanni.orderhub.service;
 
+import com.giovanni.orderhub.dto.order.OrderReceipt;
 import com.giovanni.orderhub.dto.order.OrderResponse;
 import com.giovanni.orderhub.dto.order.OrderSummaryResponse;
 import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.enums.OrderStatus;
 import com.giovanni.orderhub.exception.order.OrderNotFoundException;
-import com.giovanni.orderhub.exception.order.UnknownSkuException;
 import com.giovanni.orderhub.model.IncomingOrder;
-import com.giovanni.orderhub.model.Order;
-import com.giovanni.orderhub.model.Product;
 import com.giovanni.orderhub.repository.OrderRepository;
-import com.giovanni.orderhub.repository.ProductRepository;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,31 +23,36 @@ public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-    private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
+    /** Two orders for the same product at the same time: the loser re-reads the stock and tries again. */
+    static final int MAX_STOCK_UPDATE_ATTEMPTS = 3;
 
-    public OrderService(OrderRepository orderRepository, ProductRepository productRepository) {
+    private final OrderRepository orderRepository;
+    private final OrderRecordingService orderRecordingService;
+
+    public OrderService(OrderRepository orderRepository, OrderRecordingService orderRecordingService) {
         this.orderRepository = orderRepository;
-        this.productRepository = productRepository;
+        this.orderRecordingService = orderRecordingService;
     }
 
     /**
-     * Records an order using the all-or-nothing rule:
-     * if every item has stock, reserves it and confirms; if any is missing, reserves nothing and leaves it pending.
+     * Receives an order from a marketplace exactly once.
      *
-     * @throws UnknownSkuException if any SKU in the order is not in the catalog (nothing is saved).
+     * <p>An order already received (same channel and external id) is returned as it is, without touching stock.
+     * Two copies arriving at the same time are caught by the unique key in the database: the second one also
+     * gets the original order back.
      */
-    @Transactional
-    public OrderResponse receive(IncomingOrder incoming) {
-        Map<String, Integer> quantityBySku = totalQuantityPerSku(incoming.items());
-        Map<String, Product> productBySku = findProducts(quantityBySku.keySet());
+    public OrderReceipt receive(IncomingOrder incoming) {
+        Optional<OrderResponse> existingOrder = findExisting(incoming);
+        if (existingOrder.isPresent()) {
+            return duplicateOf(existingOrder.get());
+        }
 
-        OrderStatus status = reserveStockIfAvailable(quantityBySku, productBySku);
-
-        Order order = orderRepository.saveAndFlush(Order.of(incoming, status));
-        log.info("Pedido recebido: channel={}, externalOrderId={}, status={}, orderId={}",
-                order.getChannel(), order.getExternalOrderId(), order.getStatus(), order.getId());
-        return OrderResponse.from(order);
+        try {
+            return OrderReceipt.created(recordWithRetry(incoming));
+        } catch (DataIntegrityViolationException exception) {
+            OrderResponse orderSavedByOtherRequest = findExisting(incoming).orElseThrow(() -> exception);
+            return duplicateOf(orderSavedByOtherRequest);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -68,49 +67,27 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException(id));
     }
 
-    /** The same SKU can appear in more than one order line; the stock check needs the total per SKU. */
-    private Map<String, Integer> totalQuantityPerSku(List<IncomingOrder.Item> items) {
-        Map<String, Integer> quantityBySku = new LinkedHashMap<>();
-        for (IncomingOrder.Item item : items) {
-            quantityBySku.merge(item.sku(), item.quantity(), Integer::sum);
-        }
-        return quantityBySku;
+    private Optional<OrderResponse> findExisting(IncomingOrder incoming) {
+        return orderRepository.findWithItemsByChannelAndExternalOrderId(incoming.channel(), incoming.externalOrderId())
+                .map(OrderResponse::from);
     }
 
-    private Map<String, Product> findProducts(Set<String> skus) {
-        Map<String, Product> productBySku = new HashMap<>();
-        for (Product product : productRepository.findAllBySkuIn(skus)) {
-            productBySku.put(product.getSku(), product);
-        }
-
-        List<String> unknownSkus = new ArrayList<>(skus);
-        unknownSkus.removeAll(productBySku.keySet());
-        if (!unknownSkus.isEmpty()) {
-            throw new UnknownSkuException(unknownSkus);
-        }
-        return productBySku;
-    }
-
-    /** Reserves stock for every item, or for none. */
-    private OrderStatus reserveStockIfAvailable(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
-        if (!hasStockForAllItems(quantityBySku, productBySku)) {
-            return OrderStatus.PENDING_STOCK;
-        }
-
-        for (Map.Entry<String, Integer> entry : quantityBySku.entrySet()) {
-            Product product = productBySku.get(entry.getKey());
-            product.adjustStock(-entry.getValue());
-        }
-        return OrderStatus.CONFIRMED;
-    }
-
-    private boolean hasStockForAllItems(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
-        for (Map.Entry<String, Integer> entry : quantityBySku.entrySet()) {
-            Product product = productBySku.get(entry.getKey());
-            if (!product.hasStockFor(entry.getValue())) {
-                return false;
+    /** The last attempt is outside the loop, so its failure reaches the caller. */
+    private OrderResponse recordWithRetry(IncomingOrder incoming) {
+        for (int attempt = 1; attempt < MAX_STOCK_UPDATE_ATTEMPTS; attempt++) {
+            try {
+                return orderRecordingService.record(incoming);
+            } catch (OptimisticLockingFailureException exception) {
+                log.warn("Estoque alterado por outro pedido ao mesmo tempo, tentando de novo: channel={}, "
+                        + "externalOrderId={}, attempt={}", incoming.channel(), incoming.externalOrderId(), attempt);
             }
         }
-        return true;
+        return orderRecordingService.record(incoming);
+    }
+
+    private OrderReceipt duplicateOf(OrderResponse existingOrder) {
+        log.info("Pedido duplicado ignorado: channel={}, externalOrderId={}, orderId={}",
+                existingOrder.channel(), existingOrder.externalOrderId(), existingOrder.id());
+        return OrderReceipt.duplicate(existingOrder);
     }
 }

@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 class GlobalExceptionHandlerTest {
 
@@ -35,5 +36,14 @@ class GlobalExceptionHandlerTest {
                 .containsEntry("code", "INSUFFICIENT_STOCK")
                 .containsEntry("message", "O produto CAM-001 tem só 2 unidade(s) em estoque.");
         assertThat(body.getDetail()).contains("alteração pedida -5");
+    }
+
+    @Test
+    void shouldAnswerServiceUnavailableWhenStockKeepsChangingConcurrently() {
+        ResponseEntity<ProblemDetail> response =
+                handler.handleOptimisticLock(new ObjectOptimisticLockingFailureException("Product", 1L));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody().getProperties()).containsEntry("code", "CONCURRENT_STOCK_UPDATE");
     }
 }
