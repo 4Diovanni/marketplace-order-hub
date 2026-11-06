@@ -31,7 +31,20 @@ Formato: `<tipo>/<nº da issue>-<descricao-curta>`
 
 - Java 21 · Spring Boot 3 · Maven · MySQL 8 · Flyway.
 - Código em inglês; README, issues e PRs em português.
-- Pacotes por feature em `com.giovanni.orderhub`: `product`, `order`, `integration`, `shared`.
+- Pacotes **por camada** em `com.giovanni.orderhub`. Toda classe nova entra na pasta da sua camada:
+
+| Pacote | O que fica |
+|---|---|
+| `controller` | `@RestController`: recebe a requisição, valida o DTO, chama o service |
+| `service` | regra de negócio e transações |
+| `repository` | interfaces Spring Data JPA |
+| `model` | entidades JPA, enums e modelos de domínio |
+| `dto` | records de entrada e saída da API, um subpacote por recurso (`dto/product`, `dto/order`) |
+| `exception` | exceções de negócio e o `GlobalExceptionHandler` |
+| `integration` | adapters dos marketplaces, um subpacote por canal (`integration/alfashop`, ...) |
+| `config` | classes `@Configuration` |
+
+- Testes espelham o pacote da classe testada (`service/OrderServiceTest`, `controller/OrderApiIntegrationTest`).
 - Schema só via migrations Flyway (`ddl-auto: validate`).
 
 ## Boas práticas de código
@@ -43,6 +56,39 @@ Formato: `<tipo>/<nº da issue>-<descricao-curta>`
 - **Injeção por construtor**, com campos `final`. Nada de `@Autowired` em campo.
 - **Sem números e strings mágicas:** constantes ou enums com nome que explica.
 - **Strategy em vez de `if/switch` por canal:** novo marketplace = nova classe, sem mexer no que já funciona.
+
+### Legibilidade e formatação
+Código é lido muito mais vezes do que escrito. Se uma pessoa precisa parar para decifrar, está errado, mesmo que funcione.
+
+- **Guard clause em vez de `if` aninhado:** trate o caso de saída primeiro e retorne cedo. Nada de `if` dentro de `if` dentro de `if`.
+
+  ```java
+  // ruim
+  if (product != null) {
+      if (product.hasStockFor(qty)) {
+          if (qty > 0) { ... }
+      }
+  }
+
+  // bom
+  if (product == null) {
+      throw new ProductNotFoundException(sku);
+  }
+  if (qty <= 0) {
+      throw new InvalidQuantityException(qty);
+  }
+  if (!product.hasStockFor(qty)) {
+      return OrderStatus.PENDING_STOCK;
+  }
+  ...
+  ```
+- **Sem `else` depois de `return` ou `throw`.**
+- **Método público conta a história; os privados fazem os detalhes.** Quem lê o método público deve entender o fluxo sem abrir os outros (ex.: `OrderService.receive`: soma quantidades → busca produtos → reserva estoque → salva).
+- **Um nível de detalhe por método** e no máximo ~20 linhas. Passou disso, extraia um método com nome que explica.
+- **Stream só quando fica mais claro.** `filter`/`map`/`toList` simples, ok. Se precisa de `Collectors.toMap` com merge, `reduce` ou lambda de várias linhas, use `for`.
+- **Nada de ternário aninhado** nem expressão "esperta" em uma linha só.
+- **Variável com nome do que ela é:** `quantityBySku`, `productBySku`, não `map`, `m2`, `aux`.
+- **Formatação:** 4 espaços, linha com até 120 caracteres, chaves sempre (mesmo em `if` de uma linha), uma linha em branco entre blocos lógicos, imports sem `*`.
 
 ### Nomes
 - Nomes descrevem intenção: `reserveStock`, `findPendingOrders`, não `process`, `handle2`, `data`.

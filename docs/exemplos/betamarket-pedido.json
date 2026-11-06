@@ -1,0 +1,10 @@
+{
+  "order": {
+    "external_id": "BM-778",
+    "customer": { "first_name": "Cliente", "last_name": "Teste" },
+    "lines": [
+      { "product_code": "CAM-001", "amount": 1, "unit_price_cents": 5990 },
+      { "product_code": "GAR-001", "amount": 2, "unit_price_cents": 7490 }
+    ]
+  }
+}

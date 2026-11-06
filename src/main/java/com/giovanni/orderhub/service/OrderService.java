@@ -1,0 +1,116 @@
+package com.giovanni.orderhub.service;
+
+import com.giovanni.orderhub.dto.order.OrderResponse;
+import com.giovanni.orderhub.dto.order.OrderSummaryResponse;
+import com.giovanni.orderhub.exception.OrderNotFoundException;
+import com.giovanni.orderhub.exception.UnknownSkuException;
+import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.model.IncomingOrder;
+import com.giovanni.orderhub.model.Order;
+import com.giovanni.orderhub.model.OrderStatus;
+import com.giovanni.orderhub.model.Product;
+import com.giovanni.orderhub.repository.OrderRepository;
+import com.giovanni.orderhub.repository.ProductRepository;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+
+    private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
+
+    public OrderService(OrderRepository orderRepository, ProductRepository productRepository) {
+        this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
+    }
+
+    /**
+     * Registra um pedido aplicando a regra tudo-ou-nada:
+     * se todos os itens têm estoque, baixa o estoque e confirma; se algum falta, não baixa nada e deixa pendente.
+     *
+     * @throws UnknownSkuException se algum SKU do pedido não existe no cadastro (nada é gravado).
+     */
+    @Transactional
+    public OrderResponse receive(IncomingOrder incoming) {
+        Map<String, Integer> quantityBySku = totalQuantityPerSku(incoming.items());
+        Map<String, Product> productBySku = findProducts(quantityBySku.keySet());
+
+        OrderStatus status = reserveStockIfAvailable(quantityBySku, productBySku);
+
+        Order order = orderRepository.saveAndFlush(Order.of(incoming, status));
+        log.info("Pedido recebido: channel={}, externalOrderId={}, status={}, orderId={}",
+                order.getChannel(), order.getExternalOrderId(), order.getStatus(), order.getId());
+        return OrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrderSummaryResponse> search(OrderStatus status, Channel channel, Pageable pageable) {
+        return orderRepository.search(status, channel, pageable).map(OrderSummaryResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse findById(Long id) {
+        return orderRepository.findWithItemsById(id)
+                .map(OrderResponse::from)
+                .orElseThrow(() -> new OrderNotFoundException(id));
+    }
+
+    /** O mesmo SKU pode vir em mais de uma linha do pedido; a checagem de estoque precisa do total por SKU. */
+    private Map<String, Integer> totalQuantityPerSku(List<IncomingOrder.Item> items) {
+        Map<String, Integer> quantityBySku = new LinkedHashMap<>();
+        for (IncomingOrder.Item item : items) {
+            quantityBySku.merge(item.sku(), item.quantity(), Integer::sum);
+        }
+        return quantityBySku;
+    }
+
+    private Map<String, Product> findProducts(Set<String> skus) {
+        Map<String, Product> productBySku = new HashMap<>();
+        for (Product product : productRepository.findAllBySkuIn(skus)) {
+            productBySku.put(product.getSku(), product);
+        }
+
+        List<String> unknownSkus = new ArrayList<>(skus);
+        unknownSkus.removeAll(productBySku.keySet());
+        if (!unknownSkus.isEmpty()) {
+            throw new UnknownSkuException(unknownSkus);
+        }
+        return productBySku;
+    }
+
+    /** Baixa o estoque de todos os itens, ou de nenhum. */
+    private OrderStatus reserveStockIfAvailable(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
+        if (!hasStockForAllItems(quantityBySku, productBySku)) {
+            return OrderStatus.PENDING_STOCK;
+        }
+
+        for (Map.Entry<String, Integer> entry : quantityBySku.entrySet()) {
+            Product product = productBySku.get(entry.getKey());
+            product.adjustStock(-entry.getValue());
+        }
+        return OrderStatus.CONFIRMED;
+    }
+
+    private boolean hasStockForAllItems(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
+        for (Map.Entry<String, Integer> entry : quantityBySku.entrySet()) {
+            Product product = productBySku.get(entry.getKey());
+            if (!product.hasStockFor(entry.getValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+}

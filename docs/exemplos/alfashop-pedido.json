@@ -1,0 +1,8 @@
+{
+  "orderId": "AS-10001",
+  "buyer": { "fullName": "Cliente Teste" },
+  "items": [
+    { "sku": "CAM-001", "qty": 2, "price": 59.90 },
+    { "sku": "FON-001", "qty": 1, "price": 49.90 }
+  ]
+}
