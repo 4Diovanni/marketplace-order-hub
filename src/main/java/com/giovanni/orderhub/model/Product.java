@@ -1,6 +1,6 @@
 package com.giovanni.orderhub.model;
 
-import com.giovanni.orderhub.exception.InsufficientStockException;
+import com.giovanni.orderhub.exception.product.InsufficientStockException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

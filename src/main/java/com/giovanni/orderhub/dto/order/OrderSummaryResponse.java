@@ -1,8 +1,8 @@
 package com.giovanni.orderhub.dto.order;
 
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.enums.OrderStatus;
 import com.giovanni.orderhub.model.Order;
-import com.giovanni.orderhub.model.OrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 

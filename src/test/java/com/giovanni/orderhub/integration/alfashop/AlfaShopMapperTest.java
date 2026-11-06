@@ -6,10 +6,11 @@ import static com.giovanni.orderhub.integration.MapperTestSupport.payloadReader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.giovanni.orderhub.exception.InvalidRequestException;
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.exception.integration.InvalidPayloadException;
 import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 class AlfaShopMapperTest {
@@ -43,7 +44,7 @@ class AlfaShopMapperTest {
         assertThatThrownBy(() -> mapper.toIncomingOrder(json("""
                 {"orderId":"","buyer":{"fullName":"Ana"},"items":[]}
                 """)))
-                .isInstanceOfSatisfying(InvalidRequestException.class, ex ->
+                .isInstanceOfSatisfying(InvalidPayloadException.class, ex ->
                         assertThat(ex.getViolations()).extracting("field").containsExactly("items", "orderId"));
     }
 
@@ -52,8 +53,19 @@ class AlfaShopMapperTest {
         assertThatThrownBy(() -> mapper.toIncomingOrder(json("""
                 {"orderId":"AS-3","buyer":{"fullName":"Ana"},"items":[{"sku":"CAM-001","qty":1,"price":10.999}]}
                 """)))
-                .isInstanceOfSatisfying(InvalidRequestException.class, ex ->
+                .isInstanceOfSatisfying(InvalidPayloadException.class, ex ->
                         assertThat(ex.getViolations()).extracting("field").containsExactly("items[0].price"));
+    }
+
+    @Test
+    void shouldRejectOrderAboveAlfaShopItemLimit() {
+        String item = "{\"sku\":\"CAM-001\",\"qty\":1,\"price\":10.00}";
+        String items = String.join(",", Collections.nCopies(AlfaShopOrderPayload.MAX_ITEMS + 1, item));
+
+        assertThatThrownBy(() -> mapper.toIncomingOrder(json(
+                "{\"orderId\":\"AS-4\",\"buyer\":{\"fullName\":\"Ana\"},\"items\":[" + items + "]}")))
+                .isInstanceOfSatisfying(InvalidPayloadException.class, ex ->
+                        assertThat(ex.getViolations()).extracting("field").containsExactly("items"));
     }
 
     @Test
@@ -61,7 +73,7 @@ class AlfaShopMapperTest {
         assertThatThrownBy(() -> mapper.toIncomingOrder(json("""
                 {"orderId":"AS-2","buyer":{"fullName":"Ana"},"items":[{"sku":"CAM-001","qty":0,"price":10.00}]}
                 """)))
-                .isInstanceOfSatisfying(InvalidRequestException.class, ex ->
+                .isInstanceOfSatisfying(InvalidPayloadException.class, ex ->
                         assertThat(ex.getViolations()).extracting("field").containsExactly("items[0].qty"));
     }
 }

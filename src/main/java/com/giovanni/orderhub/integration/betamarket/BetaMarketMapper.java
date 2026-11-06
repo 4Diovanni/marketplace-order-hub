@@ -1,9 +1,9 @@
 package com.giovanni.orderhub.integration.betamarket;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.integration.OrderPayloadMapper;
 import com.giovanni.orderhub.integration.PayloadReader;
-import com.giovanni.orderhub.model.Channel;
 import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Component;
@@ -26,7 +26,7 @@ public class BetaMarketMapper implements OrderPayloadMapper {
 
     @Override
     public IncomingOrder toIncomingOrder(JsonNode json) {
-        BetaMarketOrderPayload.OrderData order = payloadReader.read(json, BetaMarketOrderPayload.class).order();
+        BetaMarketOrderPayload.OrderData order = payloadReader.read(channel(), json, BetaMarketOrderPayload.class).order();
         return new IncomingOrder(
                 Channel.BETAMARKET,
                 order.externalId(),

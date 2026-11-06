@@ -1,8 +1,8 @@
 package com.giovanni.orderhub.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.giovanni.orderhub.exception.InvalidRequestException;
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.exception.integration.InvalidPayloadException;
 import com.giovanni.orderhub.model.IncomingOrder;
 
 /**
@@ -13,6 +13,6 @@ public interface OrderPayloadMapper {
 
     Channel channel();
 
-    /** @throws InvalidRequestException se o payload não tem o formato esperado. */
+    /** @throws InvalidPayloadException se o payload não tem o formato esperado. */
     IncomingOrder toIncomingOrder(JsonNode payload);
 }

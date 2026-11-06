@@ -1,6 +1,6 @@
 package com.giovanni.orderhub.integration;
 
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.giovanni.orderhub.model;
+package com.giovanni.orderhub.enums;
 
 public enum OrderStatus {
     /** Todos os itens tinham estoque e o estoque já foi baixado. */

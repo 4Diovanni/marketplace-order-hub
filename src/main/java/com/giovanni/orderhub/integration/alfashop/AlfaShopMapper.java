@@ -1,9 +1,9 @@
 package com.giovanni.orderhub.integration.alfashop;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.integration.OrderPayloadMapper;
 import com.giovanni.orderhub.integration.PayloadReader;
-import com.giovanni.orderhub.model.Channel;
 import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,7 +27,7 @@ public class AlfaShopMapper implements OrderPayloadMapper {
 
     @Override
     public IncomingOrder toIncomingOrder(JsonNode json) {
-        AlfaShopOrderPayload payload = payloadReader.read(json, AlfaShopOrderPayload.class);
+        AlfaShopOrderPayload payload = payloadReader.read(channel(), json, AlfaShopOrderPayload.class);
         return new IncomingOrder(
                 Channel.ALFASHOP,
                 payload.orderId(),

@@ -2,8 +2,8 @@ package com.giovanni.orderhub.controller;
 
 import com.giovanni.orderhub.dto.order.OrderResponse;
 import com.giovanni.orderhub.dto.order.OrderSummaryResponse;
-import com.giovanni.orderhub.model.Channel;
-import com.giovanni.orderhub.model.OrderStatus;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.enums.OrderStatus;
 import com.giovanni.orderhub.service.OrderService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -1,5 +1,7 @@
 package com.giovanni.orderhub.model;
 
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.service.OrderService;
 import java.math.BigDecimal;
 import java.util.List;
 

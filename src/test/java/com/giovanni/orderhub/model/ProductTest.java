@@ -3,7 +3,7 @@ package com.giovanni.orderhub.model;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.giovanni.orderhub.exception.InsufficientStockException;
+import com.giovanni.orderhub.exception.product.InsufficientStockException;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 

@@ -6,8 +6,8 @@ import static com.giovanni.orderhub.integration.MapperTestSupport.payloadReader;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.giovanni.orderhub.exception.InvalidRequestException;
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.exception.integration.InvalidPayloadException;
 import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ class BetaMarketMapperTest {
     @Test
     void shouldRejectPayloadInAlfaShopFormat() {
         assertThatThrownBy(() -> mapper.toIncomingOrder(example("alfashop-pedido.json")))
-                .isInstanceOfSatisfying(InvalidRequestException.class, ex ->
+                .isInstanceOfSatisfying(InvalidPayloadException.class, ex ->
                         assertThat(ex.getViolations()).extracting("field").containsExactly("order"));
     }
 }

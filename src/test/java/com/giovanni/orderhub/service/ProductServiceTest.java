@@ -9,9 +9,9 @@ import static org.mockito.Mockito.when;
 
 import com.giovanni.orderhub.dto.product.CreateProductRequest;
 import com.giovanni.orderhub.dto.product.ProductResponse;
-import com.giovanni.orderhub.exception.DuplicateSkuException;
-import com.giovanni.orderhub.exception.InsufficientStockException;
-import com.giovanni.orderhub.exception.ProductNotFoundException;
+import com.giovanni.orderhub.exception.product.DuplicateSkuException;
+import com.giovanni.orderhub.exception.product.InsufficientStockException;
+import com.giovanni.orderhub.exception.product.ProductNotFoundException;
 import com.giovanni.orderhub.model.Product;
 import com.giovanni.orderhub.repository.ProductRepository;
 import java.math.BigDecimal;

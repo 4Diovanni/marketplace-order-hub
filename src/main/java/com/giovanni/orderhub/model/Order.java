@@ -1,5 +1,7 @@
 package com.giovanni.orderhub.model;
 
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.enums.OrderStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
