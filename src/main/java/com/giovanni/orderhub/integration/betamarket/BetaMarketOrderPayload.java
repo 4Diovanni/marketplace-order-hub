@@ -6,15 +6,21 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
-/** Formato fictício da BetaMarket: aninhado, snake_case, valores em centavos e nome do cliente em dois campos. */
+/**
+ * Fictional BetaMarket format: nested, snake_case, amounts in cents and the customer name in two fields.
+ * Contract rules: at most {@value #MAX_LINES} lines per order (see docs/marketplaces.md).
+ */
 public record BetaMarketOrderPayload(@NotNull @Valid OrderData order) {
+
+    public static final int MAX_LINES = 50;
 
     public record OrderData(
             @JsonProperty("external_id") @NotBlank String externalId,
             @NotNull @Valid Customer customer,
-            @NotEmpty List<@NotNull @Valid Line> lines) {
+            @NotEmpty @Size(max = MAX_LINES) List<@NotNull @Valid Line> lines) {
     }
 
     public record Customer(

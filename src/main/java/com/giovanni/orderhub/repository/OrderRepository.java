@@ -1,8 +1,8 @@
 package com.giovanni.orderhub.repository;
 
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.enums.OrderStatus;
 import com.giovanni.orderhub.model.Order;
-import com.giovanni.orderhub.model.OrderStatus;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    /** Filtros opcionais: {@code null} em status ou canal significa "qualquer um". */
+    /** Optional filters: {@code null} status or channel means "any". */
     @Query("""
             select o from Order o
             where (:status is null or o.status = :status)

@@ -1,12 +1,12 @@
 package com.giovanni.orderhub.dto.order;
 
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.enums.OrderStatus;
 import com.giovanni.orderhub.model.Order;
-import com.giovanni.orderhub.model.OrderStatus;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/** Versão resumida para listagem, sem itens (evita carregar os itens de cada pedido da página). */
+/** Short version for listings, without items (avoids loading the items of every order on the page). */
 public record OrderSummaryResponse(
         Long id,
         Channel channel,

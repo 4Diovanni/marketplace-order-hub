@@ -1,4 +1,4 @@
 /**
- * Adapters dos marketplaces (Strategy): leem o JSON de cada canal e convertem para o modelo interno.
+ * Marketplace adapters (Strategy): read each channel's JSON and convert it to the internal model.
  */
 package com.giovanni.orderhub.integration;

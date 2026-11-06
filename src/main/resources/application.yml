@@ -13,6 +13,13 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+orderhub:
+  # Requests-per-minute limit of each marketplace (each channel's contract is in docs/marketplaces.md).
+  rate-limit:
+    requests-per-minute:
+      alfashop: 60
+      betamarket: 30
+
 management:
   endpoints:
     web:

@@ -1,76 +1,88 @@
 # CLAUDE.md · marketplace-order-hub
 
-Regras deste repositório. Valem para qualquer pessoa ou agente que trabalhe aqui.
+Rules for this repository. They apply to every person or agent working here.
 
 ## Branches
 
-Toda branch tem um nome que diz o que está sendo feito. Nada de nomes genéricos ou gerados automaticamente (`claude/...`, `patch-1`, `teste`, `minha-branch`).
+Every branch name says what is being done. No generic or auto-generated names (`claude/...`, `patch-1`, `test`, `my-branch`).
 
-Formato: `<tipo>/<nº da issue>-<descricao-curta>`
+Format: `<type>/<issue number>-<short-description>`
 
-| Tipo | Quando usar |
+| Type | When to use |
 |---|---|
-| `feat` | funcionalidade nova |
-| `fix` | correção de bug |
-| `refactor` | mudança de código sem mudar comportamento |
-| `test` | só testes |
-| `docs` | só documentação |
-| `chore` | setup, build, CI, dependências |
+| `feat` | new feature |
+| `fix` | bug fix |
+| `refactor` | code change with no behavior change |
+| `test` | tests only |
+| `docs` | documentation only |
+| `chore` | setup, build, CI, dependencies |
 
-- Descrição em português, minúsculas, sem acento, palavras separadas por hífen, no máximo umas 5 palavras.
-- Uma branch por issue (ou por grupo pequeno de issues ligadas). Se juntar issues, use o número da primeira.
-- Exemplos: `chore/1-setup-projeto`, `feat/5-crud-produtos`, `feat/9-adapters-marketplaces`, `fix/23-estoque-negativo`.
+- Description in Portuguese, lowercase, no accents, words separated by hyphens, about 5 words at most.
+- One branch per issue (or per small group of related issues). When grouping, use the first issue number.
+- Examples: `chore/1-setup-projeto`, `feat/5-crud-produtos`, `feat/9-adapters-marketplaces`, `fix/23-estoque-negativo`.
 
 ## Pull requests
 
-- Um PR por branch, pequeno e completo: código, testes e README atualizados quando fizer sentido.
-- O corpo do PR fecha as issues (`Closes #n`) e diz como foi testado.
-- `main` só recebe código via PR com CI verde.
+- One PR per branch, small and complete: code, tests, and README updates when relevant.
+- The PR body closes its issues (`Closes #n`) and says how it was tested.
+- `main` only receives code through a PR with green CI.
 
-## Projeto
+### Maintenance PRs (`fix`, production bugs, hotfixes)
+
+Maintenance PRs must be **minimal and designed for the lowest possible impact on production**.
+
+- Change only what the fix needs. No refactoring, renaming, formatting, or "while I'm here" improvements in the same PR; open a separate `refactor` issue for those.
+- Never change public API contracts (routes, request/response fields, status codes) or the database schema unless the fix requires it. If it does, say so explicitly in the PR.
+- Prefer the fix that touches the fewest files and the smallest blast radius, even if a broader fix looks cleaner.
+- Add a test that reproduces the bug and fails without the fix.
+- The PR body states: the root cause, what changed, the risk, and how to roll back.
+
+## Project
 
 - Java 21 · Spring Boot 3 · Maven · MySQL 8 · Flyway.
-- Código em inglês; README, issues e PRs em português.
-- Pacotes **por camada** em `com.giovanni.orderhub`. Toda classe nova entra na pasta da sua camada:
+- Language: code, **code comments** (including Javadoc, YAML, SQL, and Dockerfile comments), and this file in English; README, issues, PRs, and user-facing messages in Portuguese.
+- Flyway migrations already merged into `main` are immutable, comments included: editing one changes its checksum and breaks `validate` on every database that already ran it. Fix them with a new migration.
+- Packages are organized **by layer** under `com.giovanni.orderhub`. Every new class goes into its layer's folder:
 
-| Pacote | O que fica |
+| Package | What goes there |
 |---|---|
-| `controller` | `@RestController`: recebe a requisição, valida o DTO, chama o service |
-| `service` | regra de negócio e transações |
-| `repository` | interfaces Spring Data JPA |
-| `model` | entidades JPA, enums e modelos de domínio |
-| `dto` | records de entrada e saída da API, um subpacote por recurso (`dto/product`, `dto/order`) |
-| `exception` | exceções de negócio e o `GlobalExceptionHandler` |
-| `integration` | adapters dos marketplaces, um subpacote por canal (`integration/alfashop`, ...) |
-| `config` | classes `@Configuration` |
+| `controller` | `@RestController`: receives the request, validates the DTO, calls the service |
+| `service` | business rules and transactions |
+| `repository` | Spring Data JPA interfaces |
+| `model` | JPA entities and domain models |
+| `enums` | every enum (`Channel`, `OrderStatus`, `ErrorCode`, ...) |
+| `dto` | API input/output records, one subpackage per resource (`dto/product`, `dto/order`, `dto/error`) |
+| `exception` | `ApiException` (base) + subfolders by subject: `handler`, `product`, `order`, `integration` |
+| `integration` | marketplace adapters, one subpackage per channel (`integration/alfashop`, ...) |
+| `config` | `@Configuration` and `@ConfigurationProperties` classes |
 
-- Testes espelham o pacote da classe testada (`service/OrderServiceTest`, `controller/OrderApiIntegrationTest`).
-- Schema só via migrations Flyway (`ddl-auto: validate`).
+- Tests mirror the package of the class under test (`service/OrderServiceTest`, `controller/OrderApiIntegrationTest`).
+- Schema changes only through Flyway migrations (`ddl-auto: validate`).
 
-## Boas práticas de código
+## Coding practices
 
-### Design e organização
-- **Controller fino:** só recebe a requisição, valida o DTO e chama o service. Regra de negócio fica no service (ou na entidade, quando é regra da própria entidade).
-- **Entidade nunca sai pela API.** Entrada e saída usam DTOs (`record`), com conversão explícita.
-- **Responsabilidade única:** classe e método fazem uma coisa. Método passando de ~20 linhas ou com `if` aninhado em mais de 2 níveis é sinal para extrair.
-- **Injeção por construtor**, com campos `final`. Nada de `@Autowired` em campo.
-- **Sem números e strings mágicas:** constantes ou enums com nome que explica.
-- **Strategy em vez de `if/switch` por canal:** novo marketplace = nova classe, sem mexer no que já funciona.
+### Design and organization
+- **Thin controllers:** receive the request, validate the DTO, call the service. Business rules live in the service (or in the entity, when the rule belongs to the entity).
+- **Entities never leave through the API.** Input and output use DTOs (`record`), with explicit conversion.
+- **Single responsibility:** a class or method does one thing. A method over ~20 lines, or with `if` nested more than 2 levels, is a signal to extract.
+- **Constructor injection** with `final` fields. No field `@Autowired`.
+- **No magic numbers or strings:** use constants or enums with names that explain them.
+- **Strategy instead of `if/switch` per channel:** a new marketplace is a new class, without touching what already works.
 
-### Legibilidade e formatação
-Código é lido muito mais vezes do que escrito. Se uma pessoa precisa parar para decifrar, está errado, mesmo que funcione.
+### Readability and formatting
+Code is read far more often than it is written. If a person has to stop and decode it, it is wrong, even if it works.
 
-- **Guard clause em vez de `if` aninhado:** trate o caso de saída primeiro e retorne cedo. Nada de `if` dentro de `if` dentro de `if`.
+- **Guard clauses instead of nested `if`:** handle the exit case first and return early. No `if` inside `if` inside `if`.
 
   ```java
-  // ruim
+  // bad
   if (product != null) {
       if (product.hasStockFor(qty)) {
           if (qty > 0) { ... }
       }
   }
 
-  // bom
+  // good
   if (product == null) {
       throw new ProductNotFoundException(sku);
   }
@@ -82,47 +94,53 @@ Código é lido muito mais vezes do que escrito. Se uma pessoa precisa parar par
   }
   ...
   ```
-- **Sem `else` depois de `return` ou `throw`.**
-- **Método público conta a história; os privados fazem os detalhes.** Quem lê o método público deve entender o fluxo sem abrir os outros (ex.: `OrderService.receive`: soma quantidades → busca produtos → reserva estoque → salva).
-- **Um nível de detalhe por método** e no máximo ~20 linhas. Passou disso, extraia um método com nome que explica.
-- **Stream só quando fica mais claro.** `filter`/`map`/`toList` simples, ok. Se precisa de `Collectors.toMap` com merge, `reduce` ou lambda de várias linhas, use `for`.
-- **Nada de ternário aninhado** nem expressão "esperta" em uma linha só.
-- **Variável com nome do que ela é:** `quantityBySku`, `productBySku`, não `map`, `m2`, `aux`.
-- **Formatação:** 4 espaços, linha com até 120 caracteres, chaves sempre (mesmo em `if` de uma linha), uma linha em branco entre blocos lógicos, imports sem `*`.
+- **No `else` after `return` or `throw`.**
+- **The public method tells the story; private methods hold the details.** A reader should understand the flow from the public method alone (e.g. `OrderService.receive`: sum quantities → find products → reserve stock → save).
+- **One level of detail per method**, ~20 lines at most. Beyond that, extract a method whose name explains it.
+- **Streams only when they make it clearer.** Simple `filter`/`map`/`toList` is fine. If it needs `Collectors.toMap` with a merge function, `reduce`, or a multi-line lambda, use a `for` loop.
+- **No nested ternaries** and no "clever" one-liners.
+- **Variables named after what they hold:** `quantityBySku`, `productBySku`, not `map`, `m2`, `aux`.
+- **Formatting:** 4 spaces, lines up to 120 characters, braces always (even on one-line `if`), one blank line between logical blocks, no wildcard imports.
 
-### Nomes
-- Nomes descrevem intenção: `reserveStock`, `findPendingOrders`, não `process`, `handle2`, `data`.
-- Classes são substantivos, métodos são verbos, booleanos começam com `is`/`has`/`can`.
-- Sem abreviações que só o autor entende.
+### Naming
+- Names describe intent: `reserveStock`, `findPendingOrders`, not `process`, `handle2`, `data`.
+- Classes are nouns, methods are verbs, booleans start with `is`/`has`/`can`.
+- No abbreviations that only the author understands.
 
-### Dados e regras
-- Dinheiro sempre em `BigDecimal`, nunca `double`.
-- Datas em `Instant` (UTC) no banco e na API.
-- `Optional` só como retorno; nunca como campo ou parâmetro. Nunca `Optional.get()` sem checar.
-- `@Transactional` no service, no método que precisa ser atômico, nunca no controller.
-- Validar entrada na borda (Bean Validation no DTO) e regra de negócio no service.
+### Data and rules
+- Money is always `BigDecimal`, never `double`.
+- Dates are `Instant` (UTC) in the database and the API.
+- `Optional` only as a return type; never as a field or parameter. Never call `Optional.get()` without checking.
+- `@Transactional` on the service method that must be atomic, never on the controller.
+- Validate input at the edge (Bean Validation on the DTO) and business rules in the service.
+- Time-based logic receives a `Clock` (injected), so tests can control time without `Thread.sleep`.
 
-### Erros
-- Exceções de negócio próprias (`ProductNotFoundException`, `InsufficientStockException`), tratadas num `@RestControllerAdvice` que devolve `ProblemDetail`.
-- Nunca engolir exceção (`catch` vazio ou só `printStackTrace`). Ou trata, ou relança com contexto.
-- Status HTTP corretos: `201` criou, `200` ok, `204` sem corpo, `400` entrada inválida, `404` não existe, `409` conflito, `422` regra de negócio violada.
+### Errors and API messages
+- Every business exception extends `ApiException` and carries an `ErrorCode` from `enums/ErrorCode`. New error = new `ErrorCode` entry + exception in the right `exception/<subject>` folder.
+- Every error response is RFC 7807 (`ProblemDetail`) with:
+  - `code`: stable `ErrorCode` name, for the front end to decide what to do;
+  - `message`: seller-facing text in Portuguese, ready to display;
+  - `detail`: technical detail for support and logs.
+- Unexpected errors return `500` with `INTERNAL_ERROR` and the standard message. Never leak stack traces or internal details in the response.
+- Never swallow exceptions (empty `catch` or just `printStackTrace`). Handle it or rethrow with context.
+- Correct HTTP status codes: `201` created, `200` ok, `204` no body, `400` invalid input, `404` not found, `409` conflict, `422` business rule violated, `429` rate limit (with `Retry-After`).
 
-### Testes
-- Todo PR com regra nova traz teste da regra.
-- Unitário (JUnit 5 + Mockito) para regra de service e mappers; integração (Testcontainers + MySQL) para o fluxo de ponta a ponta.
-- Nome do teste diz o cenário e o esperado: `shouldSetPendingStockWhenAnyItemIsMissing`.
-- Estrutura Arrange / Act / Assert, um comportamento por teste.
-- Nunca desabilitar ou apagar teste para o CI passar.
+### Tests
+- Every PR with a new rule includes a test for that rule.
+- Unit tests (JUnit 5 + Mockito) for service rules and mappers; integration tests (Testcontainers + MySQL) for end-to-end flows.
+- Test names state the scenario and the expected result: `shouldSetPendingStockWhenAnyItemIsMissing`.
+- Arrange / Act / Assert structure, one behavior per test.
+- Never disable or delete a test to make CI pass.
 
-### Logs
-- SLF4J (`private static final Logger log = LoggerFactory.getLogger(...)`), nunca `System.out`.
-- Logar eventos de negócio relevantes (pedido recebido, pedido duplicado, estoque insuficiente) com o id do pedido e o canal.
-- Nunca logar dado pessoal completo ou segredo.
+### Logging
+- SLF4J (`private static final Logger log = LoggerFactory.getLogger(...)`), never `System.out`.
+- Log relevant business events (order received, duplicate order, insufficient stock, rate limit hit) with the order id and channel.
+- Never log full personal data or secrets.
 
 ### Commits
-- Mensagem no imperativo, em português, dizendo o que muda: `Adiciona baixa de estoque tudo-ou-nada`.
-- Commits pequenos e com sentido; nada de `wip`, `ajustes`, `fix2` no histórico do PR final.
+- Imperative mood, in Portuguese, saying what changes: `Adiciona baixa de estoque tudo-ou-nada`.
+- Small, meaningful commits; no `wip`, `ajustes`, `fix2` in the final PR history.
 
-## Regra fixa
+## Fixed rule
 
-Projeto de portfólio com domínio inspirado em integração de marketplaces. **Nenhum código, payload, regra ou dado de empresa real** (Magis5, Allcare ou outra). Marketplaces, formatos de JSON e dados são inventados.
+Portfolio project with a domain inspired by marketplace integration. **No code, payload, rule, or data from any real company** (Magis5, Allcare, or any other). Marketplaces, JSON formats, and data are made up.

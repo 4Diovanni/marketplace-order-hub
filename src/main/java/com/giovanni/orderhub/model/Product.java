@@ -1,6 +1,6 @@
 package com.giovanni.orderhub.model;
 
-import com.giovanni.orderhub.exception.InsufficientStockException;
+import com.giovanni.orderhub.exception.product.InsufficientStockException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -45,7 +45,7 @@ public class Product {
     private Instant updatedAt;
 
     protected Product() {
-        // exigido pelo JPA
+        // required by JPA
     }
 
     public Product(String sku, String name, BigDecimal price, int stockQuantity) {
@@ -68,9 +68,9 @@ public class Product {
     }
 
     /**
-     * Soma {@code delta} ao estoque (negativo para retirar).
+     * Adds {@code delta} to the stock (negative to remove).
      *
-     * @throws InsufficientStockException se o estoque ficaria negativo; nesse caso nada muda.
+     * @throws InsufficientStockException if the stock would go negative; nothing changes in that case.
      */
     public void adjustStock(int delta) {
         int newQuantity = stockQuantity + delta;

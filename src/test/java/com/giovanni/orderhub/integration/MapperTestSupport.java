@@ -8,10 +8,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
-/** Monta um {@link PayloadReader} real (Jackson + Bean Validation) sem subir o Spring. */
+/** Builds a real {@link PayloadReader} (Jackson + Bean Validation) without starting Spring. */
 public final class MapperTestSupport {
 
-    /** Mesma configuração padrão do Spring (ex.: ignora campos desconhecidos). */
+    /** Same defaults as Spring (e.g. ignores unknown fields). */
     private static final ObjectMapper OBJECT_MAPPER = Jackson2ObjectMapperBuilder.json().build();
 
     private MapperTestSupport() {
@@ -29,7 +29,7 @@ public final class MapperTestSupport {
         }
     }
 
-    /** Lê um dos payloads de exemplo documentados em {@code docs/exemplos}. */
+    /** Reads one of the sample payloads documented in {@code docs/exemplos}. */
     public static JsonNode example(String fileName) {
         try {
             return OBJECT_MAPPER.readTree(Path.of("docs/exemplos", fileName).toFile());

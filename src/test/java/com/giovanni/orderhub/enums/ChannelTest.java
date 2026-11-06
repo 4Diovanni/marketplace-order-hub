@@ -1,9 +1,9 @@
-package com.giovanni.orderhub.model;
+package com.giovanni.orderhub.enums;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.giovanni.orderhub.exception.UnknownChannelException;
+import com.giovanni.orderhub.exception.integration.UnknownChannelException;
 import org.junit.jupiter.api.Test;
 
 class ChannelTest {

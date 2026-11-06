@@ -29,12 +29,12 @@ public class OrderItem {
     @Column(nullable = false)
     private int quantity;
 
-    /** Preço que o cliente pagou no marketplace, não o preço do cadastro. */
+    /** Price the customer paid on the marketplace, not the catalog price. */
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal unitPrice;
 
     protected OrderItem() {
-        // exigido pelo JPA
+        // required by JPA
     }
 
     OrderItem(Order order, String sku, int quantity, BigDecimal unitPrice) {

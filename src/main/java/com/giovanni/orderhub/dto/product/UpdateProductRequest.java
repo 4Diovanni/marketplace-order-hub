@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-/** SKU e estoque não mudam por aqui: o SKU é a identidade do produto e o estoque tem endpoint próprio. */
+/** SKU and stock do not change here: the SKU is the product's identity and stock has its own endpoint. */
 public record UpdateProductRequest(
         @NotBlank
         @Size(max = 150)

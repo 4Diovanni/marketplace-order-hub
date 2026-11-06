@@ -9,11 +9,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.giovanni.orderhub.dto.order.OrderResponse;
-import com.giovanni.orderhub.exception.UnknownSkuException;
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
+import com.giovanni.orderhub.enums.OrderStatus;
+import com.giovanni.orderhub.exception.order.UnknownSkuException;
 import com.giovanni.orderhub.model.IncomingOrder;
 import com.giovanni.orderhub.model.Order;
-import com.giovanni.orderhub.model.OrderStatus;
 import com.giovanni.orderhub.model.Product;
 import com.giovanni.orderhub.repository.OrderRepository;
 import com.giovanni.orderhub.repository.ProductRepository;

@@ -1,9 +1,9 @@
 package com.giovanni.orderhub.integration.alfashop;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.giovanni.orderhub.enums.Channel;
 import com.giovanni.orderhub.integration.OrderPayloadMapper;
 import com.giovanni.orderhub.integration.PayloadReader;
-import com.giovanni.orderhub.model.Channel;
 import com.giovanni.orderhub.model.IncomingOrder;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -27,7 +27,7 @@ public class AlfaShopMapper implements OrderPayloadMapper {
 
     @Override
     public IncomingOrder toIncomingOrder(JsonNode json) {
-        AlfaShopOrderPayload payload = payloadReader.read(json, AlfaShopOrderPayload.class);
+        AlfaShopOrderPayload payload = payloadReader.read(channel(), json, AlfaShopOrderPayload.class);
         return new IncomingOrder(
                 Channel.ALFASHOP,
                 payload.orderId(),
@@ -37,7 +37,7 @@ public class AlfaShopMapper implements OrderPayloadMapper {
                         .toList());
     }
 
-    /** O JSON perde o zero à direita (59.90 vira 59.9); padroniza em 2 casas. Mais de 2 casas já foi barrado no @Digits. */
+    /** JSON drops the trailing zero (59.90 becomes 59.9); normalize to 2 decimals. @Digits rejects more than 2. */
     private static BigDecimal toMoney(BigDecimal value) {
         return value.setScale(PRICE_SCALE, RoundingMode.UNNECESSARY);
     }

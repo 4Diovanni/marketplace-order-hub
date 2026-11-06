@@ -10,11 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-/** Testa a API de produtos de ponta a ponta: HTTP → controller → service → MySQL real (Flyway incluso). */
+/** Tests the product API end to end: HTTP → controller → service → real MySQL (Flyway included). */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ProductApiIntegrationTest extends MySqlContainerSupport {
 
@@ -60,7 +62,9 @@ class ProductApiIntegrationTest extends MySqlContainerSupport {
         ResponseEntity<Map> response = rest.postForEntity("/api/products", create, Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).containsEntry("title", "Conflito");
+        assertThat(response.getBody())
+                .containsEntry("code", "DUPLICATE_SKU")
+                .containsEntry("message", "Já existe um produto com o SKU CAM-001 no seu catálogo.");
     }
 
     @Test
@@ -69,6 +73,9 @@ class ProductApiIntegrationTest extends MySqlContainerSupport {
                 new HttpEntity<>(Map.of("delta", -1)), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(response.getBody())
+                .containsEntry("code", "INSUFFICIENT_STOCK")
+                .containsEntry("message", "O produto BON-001 tem só 0 unidade(s) em estoque.");
         assertThat(rest.getForEntity("/api/products/BON-001", Map.class).getBody())
                 .containsEntry("stockQuantity", 0);
     }
@@ -82,6 +89,28 @@ class ProductApiIntegrationTest extends MySqlContainerSupport {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody().get("errors").toString())
                 .contains("sku", "name", "price", "stockQuantity");
+    }
+
+    @Test
+    void shouldReturnStandardMessageForMalformedJson() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<Map> response = rest.postForEntity("/api/products",
+                new HttpEntity<>("{ isso não é json", headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("code", "MALFORMED_REQUEST").containsKey("message");
+    }
+
+    @Test
+    void shouldReturnStandardMessageForUnknownRoute() {
+        ResponseEntity<Map> response = rest.getForEntity("/api/rota-que-nao-existe", Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody())
+                .containsEntry("code", "RESOURCE_NOT_FOUND")
+                .containsEntry("message", "O endereço acessado não existe.");
     }
 
     @Test

@@ -1,12 +1,12 @@
 package com.giovanni.orderhub.integration;
 
-import com.giovanni.orderhub.model.Channel;
+import com.giovanni.orderhub.enums.Channel;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
-/** Registro dos mappers por canal, montado a partir de todos os {@link OrderPayloadMapper} do contexto. */
+/** Registry of mappers by channel, built from every {@link OrderPayloadMapper} in the context. */
 @Component
 public class OrderPayloadMappers {
 

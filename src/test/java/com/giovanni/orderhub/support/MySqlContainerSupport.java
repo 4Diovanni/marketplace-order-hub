@@ -4,8 +4,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.testcontainers.containers.MySQLContainer;
 
 /**
- * Um único MySQL para todos os testes de integração (singleton container).
- * Subir um container por classe deixaria a suíte lenta e quebraria o cache de contexto do Spring.
+ * A single MySQL for all integration tests (singleton container).
+ * One container per class would slow the suite down and break Spring's context cache.
  */
 public abstract class MySqlContainerSupport {
 
