@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/orders")
-public class OrderController {
+public class OrderController implements OrderApi {
 
     private final OrderService orderService;
 
@@ -25,6 +25,7 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    @Override
     @GetMapping
     public Page<OrderSummaryResponse> search(
             @RequestParam(required = false) OrderStatus status,
@@ -33,6 +34,7 @@ public class OrderController {
         return orderService.search(status, channel, pageable);
     }
 
+    @Override
     @GetMapping("/{id}")
     public OrderResponse findById(@PathVariable Long id) {
         return orderService.findById(id);

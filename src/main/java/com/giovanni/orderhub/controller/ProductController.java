@@ -24,7 +24,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/products")
-public class ProductController {
+public class ProductController implements ProductApi {
 
     private final ProductService productService;
 
@@ -32,6 +32,7 @@ public class ProductController {
         this.productService = productService;
     }
 
+    @Override
     @PostMapping
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody CreateProductRequest request) {
         ProductResponse created = productService.create(request);
@@ -42,26 +43,31 @@ public class ProductController {
         return ResponseEntity.created(location).body(created);
     }
 
+    @Override
     @GetMapping
     public Page<ProductResponse> findAll(@PageableDefault(size = 20, sort = "sku") Pageable pageable) {
         return productService.findAll(pageable);
     }
 
+    @Override
     @GetMapping("/{sku}")
     public ProductResponse findBySku(@PathVariable String sku) {
         return productService.findBySku(sku);
     }
 
+    @Override
     @PutMapping("/{sku}")
     public ProductResponse update(@PathVariable String sku, @Valid @RequestBody UpdateProductRequest request) {
         return productService.update(sku, request);
     }
 
+    @Override
     @PatchMapping("/{sku}/stock")
     public ProductResponse adjustStock(@PathVariable String sku, @Valid @RequestBody StockAdjustmentRequest request) {
         return productService.adjustStock(sku, request.delta());
     }
 
+    @Override
     @DeleteMapping("/{sku}")
     public ResponseEntity<Void> delete(@PathVariable String sku) {
         productService.delete(sku);

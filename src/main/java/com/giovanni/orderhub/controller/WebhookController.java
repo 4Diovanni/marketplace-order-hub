@@ -20,7 +20,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 /** Entry point for marketplaces: each channel sends the order in its own format to the same route. */
 @RestController
 @RequestMapping("/api/webhooks")
-public class WebhookController {
+public class WebhookController implements WebhookApi {
 
     private final RateLimitService rateLimitService;
     private final OrderPayloadMappers mappers;
@@ -33,6 +33,7 @@ public class WebhookController {
         this.orderService = orderService;
     }
 
+    @Override
     @PostMapping("/{channel}/orders")
     public ResponseEntity<WebhookOrderResponse> receiveOrder(@PathVariable("channel") String channelSlug,
                                                              @RequestBody JsonNode payload) {
