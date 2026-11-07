@@ -103,7 +103,19 @@ MySQL do Compose (`localhost:3306`, banco/usuário/senha `orderhub`).
 curl -s $BASE/actuator/health
 ```
 
-Esperado: `{"status":"UP"}`. A documentação interativa (Swagger) fica em http://localhost:8080/swagger-ui.html.
+Esperado: `{"status":"UP"}`.
+
+### Testar pelo Swagger (sem terminal)
+
+1. Abra http://localhost:8080/swagger-ui.html. Os endpoints aparecem em três grupos: **Produtos**, **Webhooks** e
+   **Pedidos**, cada um com descrição e os códigos de resposta possíveis.
+2. Em **Webhooks**, abra `POST /api/webhooks/{channel}/orders` e clique em **Try it out**.
+3. Em `channel`, escolha `alfashop`. Em **Examples**, escolha `AlfaShop: plano, reais`. Clique em **Execute**.
+4. Esperado: `201` com `"code":"ORDER_CONFIRMED"`. Clicando em **Execute** de novo: `200` com
+   `"code":"ORDER_ALREADY_RECEIVED"`.
+5. Repita com `betamarket` no `channel` e `BetaMarket: aninhado, centavos` no exemplo para ver o outro formato.
+
+O documento OpenAPI em JSON fica em http://localhost:8080/v3/api-docs.
 
 ## 3. Testes automatizados
 
@@ -458,3 +470,4 @@ Ao fechar uma issue, acrescente aqui os testes novos e uma linha nesta tabela.
 | #23 a #25 | Mensagens para o seller, rate limit e limite de itens por canal (seções 5.8, 7) |
 | #11 | Pedido repetido devolve `200` com o original; concorrência no estoque e na chegada do mesmo pedido (seções 5.2, 8) |
 | #12 | Teste automatizado do fluxo completo (`OrderFlowIntegrationTest`, seção 3). Nenhum comportamento novo |
+| #13 | Teste pelo Swagger, com os exemplos de cada marketplace (seção 2) |

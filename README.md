@@ -4,11 +4,18 @@
 
 API REST que recebe pedidos de marketplaces com formatos diferentes, converte tudo para um modelo único, controla o estoque e garante que o mesmo pedido não seja processado duas vezes.
 
-> Projeto de portfólio, em construção. Os marketplaces (`AlfaShop`, `BetaMarket`), os formatos de payload e os dados são fictícios. O domínio é inspirado na minha experiência com integração de marketplaces; nenhum código ou regra de empresa foi usado.
+> Projeto de portfólio. Os marketplaces (`AlfaShop`, `BetaMarket`), os formatos de payload e os dados são fictícios. O domínio é inspirado na minha experiência com integração de marketplaces; nenhum código ou regra de empresa foi usado.
+
+## O problema
+
+Um lojista que vende em vários marketplaces recebe pedidos em JSONs diferentes: nomes de campo, estrutura e até
+unidade de valor (reais × centavos) mudam de um canal para outro. Se o mesmo pedido chegar duas vezes (retry do
+marketplace, timeout), o estoque não pode ser baixado duas vezes. E dois pedidos simultâneos do mesmo produto não podem
+deixar o estoque negativo.
 
 ## Stack
 
-Java 21 · Spring Boot 3 · Spring Data JPA · MySQL 8 · Flyway · Bean Validation · JUnit 5 · Testcontainers · Docker Compose · springdoc-openapi (Swagger)
+Java 21 · Spring Boot 3 · Spring Data JPA · MySQL 8 · Flyway · Bean Validation · JUnit 5 · Mockito · Testcontainers · Docker Compose · springdoc-openapi (Swagger) · GitHub Actions
 
 ## Como rodar
 
@@ -21,7 +28,7 @@ docker compose up --build
 ```
 
 - Health: http://localhost:8080/actuator/health
-- Swagger: http://localhost:8080/swagger-ui.html
+- Swagger: http://localhost:8080/swagger-ui.html (descrição, códigos de resposta e exemplos de cada marketplace)
 
 Rodar os testes (precisa de Docker rodando, por causa do Testcontainers):
 
@@ -38,6 +45,19 @@ docker compose up -d mysql
 
 Passo a passo para subir no seu PC (Docker, Maven/IDE ou MySQL local) e testar cada endpoint na mão, com as
 respostas esperadas: [`docs/roteiro-de-testes.md`](docs/roteiro-de-testes.md).
+
+## Arquitetura
+
+![Fluxo do pedido: marketplaces → webhook → rate limit → mapper por canal → modelo único → regra de estoque → MySQL](docs/arquitetura.png)
+
+1. Cada marketplace manda o pedido no próprio formato para `POST /api/webhooks/{canal}/orders`.
+2. O `RateLimitService` confere o limite por minuto do canal (acima dele, `429` com `Retry-After`).
+3. O mapper do canal (Strategy) valida o JSON e converte para o modelo único `IncomingOrder`.
+4. O `OrderService` devolve o pedido original se ele já foi recebido; senão, o `OrderRecordingService` aplica a regra
+   de estoque e grava tudo numa transação.
+5. Qualquer erro sai no mesmo formato (RFC 7807) pelo `GlobalExceptionHandler`.
+
+O fonte do diagrama é [`docs/arquitetura.mmd`](docs/arquitetura.mmd) (Mermaid).
 
 ## Endpoints
 
@@ -131,11 +151,28 @@ decidir o que fazer, e `message`, um texto pronto para o seller. O `detail` fica
 Erro não previsto vira `500` com `code: INTERNAL_ERROR` e mensagem padrão, sem stack trace na resposta.
 O catálogo de códigos está em `enums/ErrorCode.java`.
 
+## Decisões técnicas
+
+1. **Strategy por marketplace.** Cada canal tem um `OrderPayloadMapper`; o Spring injeta todos e o hub escolhe pelo
+   canal da URL. Um terceiro marketplace é uma classe nova, sem alterar o `OrderService`.
+2. **Idempotência em duas camadas.** Checagem de `(channel, externalOrderId)` no service e unique constraint no banco
+   para cobrir duas requisições simultâneas.
+3. **Tudo ou nada no estoque.** Pedido parcialmente atendido é mais difícil de tratar do que um pedido pendente
+   inteiro.
+4. **Lock otimista (`@Version`) com retry.** Evita estoque negativo em concorrência sem travar a linha do produto
+   durante a transação. Cada tentativa roda numa transação nova (`OrderRecordingService`).
+5. **O pedido guarda o preço do marketplace**, não o preço do cadastro: é o que o cliente pagou.
+6. **Erros com `code` e `message`.** O `code` é estável para o front decidir o que fazer; a `message` já vem pronta
+   para o seller, separada do `detail` técnico.
+7. **Flyway** para versionar o schema, em vez de `ddl-auto`.
+8. **Testcontainers com MySQL** nos testes de integração, para testar no mesmo banco da aplicação, incluindo pedidos
+   simultâneos de verdade.
+
 ## Estrutura
 
 ```
 src/main/java/com/giovanni/orderhub/
-├── controller/    endpoints REST (produtos, pedidos, webhooks)
+├── controller/    endpoints REST + interfaces *Api com a documentação do Swagger
 ├── service/       regras de negócio (estoque, pedidos)
 ├── repository/    acesso ao banco (Spring Data JPA)
 ├── model/         entidades (Product, Order, OrderItem) e IncomingOrder
@@ -154,9 +191,15 @@ src/main/java/com/giovanni/orderhub/
 | `DB_USERNAME` | `orderhub` |
 | `DB_PASSWORD` | `orderhub` |
 
-## Roadmap
+## Próximos passos
 
-O plano do MVP está nas [issues](https://github.com/4Diovanni/marketplace-order-hub/issues): CRUD de produtos, webhooks de 2 marketplaces, regra de estoque, idempotência, testes e documentação.
+O MVP está completo. A evolução está nas [issues abertas](https://github.com/4Diovanni/marketplace-order-hub/issues):
+
+- [ ] [#14](https://github.com/4Diovanni/marketplace-order-hub/issues/14) Reprocessar pedidos `PENDING_STOCK` quando o estoque for reposto
+- [ ] [#15](https://github.com/4Diovanni/marketplace-order-hub/issues/15) Fila com retry e dead letter (RabbitMQ)
+- [ ] [#16](https://github.com/4Diovanni/marketplace-order-hub/issues/16) Logs estruturados com correlation id
+- [ ] [#17](https://github.com/4Diovanni/marketplace-order-hub/issues/17) Assinatura HMAC nos webhooks
+- [ ] [#18](https://github.com/4Diovanni/marketplace-order-hub/issues/18) Cancelamento de pedido com devolução de estoque
 
 ## Autor
 
