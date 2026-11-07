@@ -36,6 +36,9 @@ docker compose up -d mysql
 ./mvnw spring-boot:run
 ```
 
+Passo a passo para subir no seu PC (Docker, Maven/IDE ou MySQL local) e testar cada endpoint na mão, com as
+respostas esperadas: [`docs/roteiro-de-testes.md`](docs/roteiro-de-testes.md).
+
 ## Endpoints
 
 Produtos (o banco já sobe com 10 produtos fictícios, ex.: `CAM-001`):
@@ -65,7 +68,7 @@ Pedidos:
 
 | Método | Rota | Descrição | Respostas |
 |---|---|---|---|
-| `POST` | `/api/webhooks/{channel}/orders` | Recebe pedido de `alfashop` ou `betamarket`, cada um no seu formato | `201` · `400` payload inválido · `404` canal desconhecido · `422` SKU inexistente · `429` limite do canal |
+| `POST` | `/api/webhooks/{channel}/orders` | Recebe pedido de `alfashop` ou `betamarket`, cada um no seu formato | `201` novo · `200` já recebido · `400` payload inválido · `404` canal desconhecido · `422` SKU inexistente · `429` limite do canal · `503` estoque em disputa |
 | `GET` | `/api/orders?status=&channel=` | Lista paginada, mais recentes primeiro | `200` |
 | `GET` | `/api/orders/{id}` | Detalhe com itens | `200` · `404` |
 
@@ -86,6 +89,14 @@ curl -X POST http://localhost:8080/api/webhooks/betamarket/orders \
 ```
 
 **Regra de estoque (tudo ou nada):** se todos os itens têm estoque, o estoque é baixado e o pedido fica `CONFIRMED`. Se qualquer item falta, nada é baixado e o pedido fica `PENDING_STOCK`. O mesmo SKU em mais de uma linha do pedido é somado antes da checagem.
+
+**Idempotência:** o mesmo pedido (`channel` + `externalOrderId`) enviado de novo devolve `200` com o pedido original
+(`code: ORDER_ALREADY_RECEIVED`) e não mexe no estoque. Duas cópias chegando ao mesmo tempo são barradas pela unique
+constraint no banco, e a segunda também recebe o original.
+
+**Concorrência:** o produto tem lock otimista (`@Version`). Se dois pedidos baixam o mesmo SKU ao mesmo tempo, o que
+perde a corrida relê o estoque e tenta de novo (até 3 vezes). O estoque nunca fica negativo. Se ainda assim não
+conseguir, responde `503` (`CONCURRENT_STOCK_UPDATE`), e o marketplace reenvia o pedido.
 
 O webhook responde com uma mensagem pronta para o seller, além do pedido:
 

@@ -23,4 +23,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @EntityGraph(attributePaths = "items")
     Optional<Order> findWithItemsById(Long id);
+
+    @EntityGraph(attributePaths = "items")
+    Optional<Order> findWithItemsByChannelAndExternalOrderId(Channel channel, String externalOrderId);
 }
