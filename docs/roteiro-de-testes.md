@@ -15,10 +15,11 @@ As respostas de exemplo foram copiadas de execuções reais. Datas e ids podem m
 6. [Consultas de pedidos](#6-consultas-de-pedidos)
 7. [Rate limit](#7-rate-limit)
 8. [Concorrência e pedidos repetidos](#8-concorrência-e-pedidos-repetidos)
-9. [Erros genéricos](#9-erros-genéricos)
-10. [Voltar o banco ao estado inicial](#10-voltar-o-banco-ao-estado-inicial)
-11. [Problemas comuns](#11-problemas-comuns)
-12. [Histórico: o que cada issue acrescentou](#12-histórico-o-que-cada-issue-acrescentou)
+9. [Reposição de estoque e pedidos pendentes](#9-reposição-de-estoque-e-pedidos-pendentes)
+10. [Erros genéricos](#10-erros-genéricos)
+11. [Voltar o banco ao estado inicial](#11-voltar-o-banco-ao-estado-inicial)
+12. [Problemas comuns](#12-problemas-comuns)
+13. [Histórico: o que cada issue acrescentou](#13-histórico-o-que-cada-issue-acrescentou)
 
 ---
 
@@ -136,6 +137,8 @@ rodar só ele:
 
 A mesma sequência, na mão, são os testes 4.4, 5.1, 5.2 e 5.4 deste roteiro.
 
+A reposição de estoque confirmando pedidos pendentes (issue #14) está no `StockReplenishmentIntegrationTest`.
+
 Só os testes unitários, sem Docker:
 
 ```bash
@@ -146,7 +149,7 @@ Só os testes unitários, sem Docker:
 
 Daqui em diante, cada teste traz o comando, o status esperado e o trecho da resposta que importa. O
 `-w "\nHTTP %{http_code}\n"` imprime o status no final. Os testes das seções 4 a 6 partem do banco recém-criado
-(produtos do seed); veja a [seção 10](#10-voltar-o-banco-ao-estado-inicial) para zerar.
+(produtos do seed); veja a [seção 11](#11-voltar-o-banco-ao-estado-inicial) para zerar.
 
 Produtos do seed usados nos testes: `CAM-001` (50 unidades), `FON-001` (60), `GAR-001` (30), `LIV-001` (80) e
 `BON-001` (**0**, para testar falta de estoque).
@@ -223,7 +226,8 @@ curl -s -w "\nHTTP %{http_code}\n" -X PATCH $BASE/api/products/MEI-001/stock -H 
   -d '{"delta":-3}'
 ```
 
-Esperado: `200`, `"stockQuantity":97`. `delta` positivo repõe, negativo retira.
+Esperado: `200`, `"stockQuantity":97`. `delta` positivo repõe, negativo retira. Repor também confirma pedidos
+pendentes daquele SKU: veja a [seção 9](#9-reposição-de-estoque-e-pedidos-pendentes).
 
 ### 4.9 Ajuste que deixaria o estoque negativo
 
@@ -427,7 +431,84 @@ Esperado: um `201` e quatro `200` (a ordem varia). O `LIV-001` cai só 1 unidade
 `Duplicate entry 'ALFASHOP-AS-DUP'` como `ERROR`: é a unique constraint pegando a corrida, e o hub responde com o
 pedido original (`Pedido duplicado ignorado`). Não é falha.
 
-## 9. Erros genéricos
+## 9. Reposição de estoque e pedidos pendentes
+
+Testes da issue #14. Repor estoque (`delta` positivo) confirma os pedidos `PENDING_STOCK` que têm aquele SKU, do mais
+antigo para o mais novo, com a mesma regra de tudo ou nada. Esta seção parte do estado deixado pelas seções 5 a 8:
+o `BM-779` (5.4) e quatro pedidos `AS-ULT-*` (8.1) estão pendentes.
+
+### 9.1 Repor o item que faltava confirma o pedido pendente
+
+O `BM-779` está pendente só porque o `BON-001` tinha 0 unidades.
+
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -X PATCH $BASE/api/products/BON-001/stock -H "Content-Type: application/json" \
+  -d '{"delta":1}'
+curl -s "$BASE/api/orders?channel=BETAMARKET" | grep -oE '"externalOrderId":"BM-779","status":"[A-Z_]+"'
+curl -s $BASE/api/products/CAM-001 | grep -oE '"stockQuantity":[0-9]+'
+```
+
+Esperado: `200` com `"stockQuantity":0` (a resposta já desconta a unidade que o pedido reservou), o
+`"externalOrderId":"BM-779","status":"CONFIRMED"` e o `CAM-001` com `"stockQuantity":46` (era 47): a reserva é de
+**todos** os itens do pedido. No log da app:
+
+```
+Pedido pendente confirmado após reposição de estoque: channel=BETAMARKET, externalOrderId=BM-779, orderId=3
+Pedidos pendentes reprocessados após reposição: sku=BON-001, pendentes=1, confirmados=1
+```
+
+### 9.2 Pedido que ainda não cabe é pulado, e o próximo é confirmado
+
+Um produto sem estoque e dois pedidos: o mais antigo pede 3 unidades, o mais novo pede 1.
+
+```bash
+curl -s -o /dev/null -X POST $BASE/api/products -H "Content-Type: application/json" \
+  -d '{"sku":"GRD-001","name":"Produto em falta","price":10.00,"stockQuantity":0}'
+curl -s -o /dev/null -w "%{http_code} " -X POST $BASE/api/webhooks/alfashop/orders -H "Content-Type: application/json" \
+  -d '{"orderId":"AS-GRD-1","buyer":{"fullName":"Cliente"},"items":[{"sku":"GRD-001","qty":3,"price":10.00}]}'
+curl -s -o /dev/null -w "%{http_code}\n" -X POST $BASE/api/webhooks/alfashop/orders -H "Content-Type: application/json" \
+  -d '{"orderId":"AS-GRD-2","buyer":{"fullName":"Cliente"},"items":[{"sku":"GRD-001","qty":1,"price":10.00}]}'
+
+curl -s -w "\nHTTP %{http_code}\n" -X PATCH $BASE/api/products/GRD-001/stock -H "Content-Type: application/json" \
+  -d '{"delta":2}'
+curl -s "$BASE/api/orders?channel=ALFASHOP&size=50" | grep -oE '"externalOrderId":"AS-GRD-[0-9]","status":"[A-Z_]+"'
+```
+
+Esperado: dois `201` (os dois pedidos ficam pendentes), depois `200` com `"stockQuantity":1` e:
+
+```
+"externalOrderId":"AS-GRD-2","status":"CONFIRMED"
+"externalOrderId":"AS-GRD-1","status":"PENDING_STOCK"
+```
+
+O `AS-GRD-1` foi tentado primeiro, mas 3 unidades não cabiam em 2; continua pendente e não trava o `AS-GRD-2`.
+Repondo mais 2, ele é confirmado:
+
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -X PATCH $BASE/api/products/GRD-001/stock -H "Content-Type: application/json" \
+  -d '{"delta":2}'
+curl -s "$BASE/api/orders?channel=ALFASHOP&size=50" | grep -oE '"externalOrderId":"AS-GRD-1","status":"[A-Z_]+"'
+```
+
+Esperado: `200` com `"stockQuantity":0` e `"externalOrderId":"AS-GRD-1","status":"CONFIRMED"`.
+
+### 9.3 Ordem de chegada entre vários pendentes
+
+Dos cinco `AS-ULT-*` da seção 8.1, um foi confirmado e quatro ficaram pendentes. Repondo 2 unidades:
+
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -X PATCH $BASE/api/products/ULT-001/stock -H "Content-Type: application/json" \
+  -d '{"delta":2}'
+curl -s "$BASE/api/orders?size=50" | grep -oE '"externalOrderId":"AS-ULT-[0-9]","status":"[A-Z_]+"'
+```
+
+Esperado: `200` com `"stockQuantity":0`, três `CONFIRMED` (o do 8.1 e os dois pendentes que chegaram primeiro) e dois
+`PENDING_STOCK`. Quais números saem confirmados varia, porque os pedidos do 8.1 chegam em paralelo. No log:
+`Pedidos pendentes reprocessados após reposição: sku=ULT-001, pendentes=4, confirmados=2`.
+
+Retirar estoque (`delta` negativo) nunca reprocessa pedidos.
+
+## 10. Erros genéricos
 
 | Teste | Comando | Esperado |
 |---|---|---|
@@ -438,7 +519,7 @@ pedido original (`Pedido duplicado ignorado`). Não é falha.
 Todo erro segue o mesmo formato (RFC 7807): `code` para o front decidir o que fazer, `message` para o seller e
 `detail` técnico. Nenhum erro devolve stack trace.
 
-## 10. Voltar o banco ao estado inicial
+## 11. Voltar o banco ao estado inicial
 
 - **Formas A e B (Docker):** `docker compose down -v` apaga o volume do MySQL. Na próxima subida, o Flyway recria
   tudo com o seed.
@@ -447,7 +528,7 @@ Todo erro segue o mesmo formato (RFC 7807): `code` para o front decidir o que fa
 
 O rate limit fica em memória: reiniciar a app zera os contadores.
 
-## 11. Problemas comuns
+## 12. Problemas comuns
 
 | Sintoma | Causa provável | O que fazer |
 |---|---|---|
@@ -455,11 +536,11 @@ O rate limit fica em memória: reiniciar a app zera os contadores.
 | `Access denied for user 'orderhub'` | usuário ou senha diferentes | crie o usuário (forma C, passo 1) ou ajuste `DB_USERNAME` / `DB_PASSWORD` |
 | `Port 3306 is already in use` no `docker compose up` | MySQL do PC ligado | pare o serviço MySQL do Windows ou use a forma C |
 | `Port 8080 is already in use` | outra app na porta | pare a outra app ou suba com `--server.port=8081` e ajuste `BASE` |
-| `Validate failed: Migrations have failed validation` | uma migration já aplicada foi alterada | zere o banco ([seção 10](#10-voltar-o-banco-ao-estado-inicial)) |
+| `Validate failed: Migrations have failed validation` | uma migration já aplicada foi alterada | zere o banco ([seção 11](#11-voltar-o-banco-ao-estado-inicial)) |
 | Testes de integração falham com `Could not find a valid Docker environment` | Docker parado | ligue o Docker Desktop e rode de novo |
 | Exemplos com `curl` dão erro no PowerShell | `curl` é outro comando lá | use o Git Bash |
 
-## 12. Histórico: o que cada issue acrescentou
+## 13. Histórico: o que cada issue acrescentou
 
 Ao fechar uma issue, acrescente aqui os testes novos e uma linha nesta tabela.
 
@@ -471,3 +552,4 @@ Ao fechar uma issue, acrescente aqui os testes novos e uma linha nesta tabela.
 | #11 | Pedido repetido devolve `200` com o original; concorrência no estoque e na chegada do mesmo pedido (seções 5.2, 8) |
 | #12 | Teste automatizado do fluxo completo (`OrderFlowIntegrationTest`, seção 3). Nenhum comportamento novo |
 | #13 | Teste pelo Swagger, com os exemplos de cada marketplace (seção 2) |
+| #14 | Reposição de estoque confirma pedidos pendentes por ordem de chegada (seção 9; nota no 4.8; `StockReplenishmentIntegrationTest` na seção 3) |

@@ -69,7 +69,7 @@ Produtos (o banco já sobe com 10 produtos fictícios, ex.: `CAM-001`):
 | `GET` | `/api/products?page=0&size=20&sort=sku` | Lista paginada | `200` |
 | `GET` | `/api/products/{sku}` | Detalhe | `200` · `404` |
 | `PUT` | `/api/products/{sku}` | Atualiza nome e preço | `200` · `400` · `404` |
-| `PATCH` | `/api/products/{sku}/stock` | Ajusta estoque com `{"delta": n}` | `200` · `404` · `422` se ficar negativo |
+| `PATCH` | `/api/products/{sku}/stock` | Ajusta estoque com `{"delta": n}`; ao repor, confirma os pedidos pendentes desse SKU | `200` · `404` · `422` se ficar negativo |
 | `DELETE` | `/api/products/{sku}` | Remove | `204` · `404` |
 
 Exemplo:
@@ -109,6 +109,11 @@ curl -X POST http://localhost:8080/api/webhooks/betamarket/orders \
 ```
 
 **Regra de estoque (tudo ou nada):** se todos os itens têm estoque, o estoque é baixado e o pedido fica `CONFIRMED`. Se qualquer item falta, nada é baixado e o pedido fica `PENDING_STOCK`. O mesmo SKU em mais de uma linha do pedido é somado antes da checagem.
+
+**Reposição confirma pendentes:** quando o estoque de um SKU é reposto (`PATCH .../stock` com `delta` positivo), o hub
+tenta confirmar os pedidos `PENDING_STOCK` que têm esse SKU, do mais antigo para o mais novo, com a mesma regra de
+tudo ou nada. Um pedido que ainda não cabe continua pendente e não trava os seguintes: um pedido mais novo e menor que
+caiba no estoque é confirmado. A resposta do `PATCH` já mostra o estoque depois dessas confirmações.
 
 **Idempotência:** o mesmo pedido (`channel` + `externalOrderId`) enviado de novo devolve `200` com o pedido original
 (`code: ORDER_ALREADY_RECEIVED`) e não mexe no estoque. Duas cópias chegando ao mesmo tempo são barradas pela unique
@@ -165,7 +170,11 @@ O catálogo de códigos está em `enums/ErrorCode.java`.
 6. **Erros com `code` e `message`.** O `code` é estável para o front decidir o que fazer; a `message` já vem pronta
    para o seller, separada do `detail` técnico.
 7. **Flyway** para versionar o schema, em vez de `ddl-auto`.
-8. **Testcontainers com MySQL** nos testes de integração, para testar no mesmo banco da aplicação, incluindo pedidos
+8. **Reposição em transações separadas.** O ajuste de estoque é gravado primeiro; depois, cada pedido pendente é
+   confirmado na própria transação, com `SELECT ... FOR UPDATE` no pedido (duas reposições simultâneas não confirmam
+   o mesmo pedido duas vezes) e o mesmo lock otimista no produto. Se a confirmação falhar, o ajuste do seller não é
+   desfeito e o pedido fica para a próxima reposição.
+9. **Testcontainers com MySQL** nos testes de integração, para testar no mesmo banco da aplicação, incluindo pedidos
    simultâneos de verdade.
 
 ## Estrutura
@@ -195,7 +204,7 @@ src/main/java/com/giovanni/orderhub/
 
 O MVP está completo. A evolução está nas [issues abertas](https://github.com/4Diovanni/marketplace-order-hub/issues):
 
-- [ ] [#14](https://github.com/4Diovanni/marketplace-order-hub/issues/14) Reprocessar pedidos `PENDING_STOCK` quando o estoque for reposto
+- [x] [#14](https://github.com/4Diovanni/marketplace-order-hub/issues/14) Reprocessar pedidos `PENDING_STOCK` quando o estoque for reposto
 - [ ] [#15](https://github.com/4Diovanni/marketplace-order-hub/issues/15) Fila com retry e dead letter (RabbitMQ)
 - [ ] [#16](https://github.com/4Diovanni/marketplace-order-hub/issues/16) Logs estruturados com correlation id
 - [ ] [#17](https://github.com/4Diovanni/marketplace-order-hub/issues/17) Assinatura HMAC nos webhooks
