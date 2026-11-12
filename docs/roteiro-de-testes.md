@@ -114,6 +114,16 @@ Esperado: `{"status":"UP"}`. A documentação interativa (Swagger) fica em http:
 Precisa do Docker ligado: os testes de integração sobem um MySQL próprio com Testcontainers, sem mexer no seu banco.
 Esperado: `BUILD SUCCESS` e `Tests run: ..., Failures: 0, Errors: 0`.
 
+O teste que resume o projeto é o `OrderFlowIntegrationTest`: cadastra um produto, recebe um pedido da AlfaShop,
+recebe o mesmo pedido de novo (não duplica nem baixa estoque) e, sem estoque, deixa o próximo pedido pendente. Para
+rodar só ele:
+
+```bash
+./mvnw verify -Dtest=OrderFlowIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+A mesma sequência, na mão, são os testes 4.4, 5.1, 5.2 e 5.4 deste roteiro.
+
 Só os testes unitários, sem Docker:
 
 ```bash
@@ -447,3 +457,4 @@ Ao fechar uma issue, acrescente aqui os testes novos e uma linha nesta tabela.
 | #8 a #10 | Webhooks dos dois marketplaces, regra tudo ou nada, consultas de pedidos (seções 5.1, 5.3 a 5.7, 6) |
 | #23 a #25 | Mensagens para o seller, rate limit e limite de itens por canal (seções 5.8, 7) |
 | #11 | Pedido repetido devolve `200` com o original; concorrência no estoque e na chegada do mesmo pedido (seções 5.2, 8) |
+| #12 | Teste automatizado do fluxo completo (`OrderFlowIntegrationTest`, seção 3). Nenhum comportamento novo |
