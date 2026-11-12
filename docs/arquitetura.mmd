@@ -1,0 +1,30 @@
+%% Source of docs/arquitetura.png. To regenerate:
+%% npx -p @mermaid-js/mermaid-cli mmdc -i docs/arquitetura.mmd -o docs/arquitetura.png -w 1400 -b white
+%%{init: {"theme": "neutral", "themeVariables": {"fontSize": "18px"}}}%%
+flowchart TB
+    alfa["AlfaShop<br/>JSON plano · reais"]
+    beta["BetaMarket<br/>JSON aninhado · centavos"]
+    seller["Seller / front-end"]
+
+    subgraph hub["marketplace-order-hub"]
+        webhook["WebhookController<br/>POST /api/webhooks/{canal}/orders"]
+        rate["RateLimitService<br/>limite por canal → 429"]
+        mappers{"Strategy por canal"}
+        alfaMapper["AlfaShopMapper"]
+        betaMapper["BetaMarketMapper"]
+        incoming["IncomingOrder<br/>modelo único"]
+        orderService["OrderService<br/>idempotência · retry do lock otimista"]
+        recording["OrderRecordingService<br/>estoque tudo ou nada · 1 transação"]
+        crud["ProductController · OrderController<br/>/api/products · /api/orders"]
+        services["ProductService · OrderService"]
+    end
+
+    db[("MySQL 8<br/>products · orders · order_items")]
+
+    alfa --> webhook
+    beta --> webhook
+    webhook --> rate --> mappers
+    mappers --> alfaMapper --> incoming
+    mappers --> betaMapper --> incoming
+    incoming --> orderService --> recording --> db
+    seller --> crud --> services --> db

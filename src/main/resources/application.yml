@@ -27,5 +27,7 @@ management:
         include: health,info
 
 springdoc:
+  # Error responses are documented per endpoint, not added to every endpoint from the exception handler.
+  override-with-generic-response: false
   swagger-ui:
     path: /swagger-ui.html
