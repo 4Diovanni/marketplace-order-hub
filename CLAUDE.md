@@ -27,6 +27,9 @@ Format: `<type>/<issue number>-<short-description>`
 - Every PR that adds or changes behavior updates `docs/roteiro-de-testes.md`: setup steps if they changed, a manual
   test (command + expected status + key part of the response) for each new endpoint or rule, copied from a real run,
   and a line in its history table.
+- Every PR that adds or changes an endpoint, a business rule, or an error code also updates the Postman collection in
+  `postman/` (the request with its tests) and the request table in `postman/README.md`. Run the collection with Newman
+  against a fresh database before opening the PR: it must finish with zero failures.
 - The PR body closes its issues (`Closes #n`) and says how it was tested.
 - `main` only receives code through a PR with green CI.
 
