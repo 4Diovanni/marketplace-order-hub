@@ -118,6 +118,18 @@ Esperado: `{"status":"UP"}`.
 
 O documento OpenAPI em JSON fica em http://localhost:8080/v3/api-docs.
 
+### Testar pelo Postman
+
+A pasta [`postman/`](../postman) tem a coleção com todas as requisições deste roteiro (menos a concorrência), cada uma
+com testes que conferem o status e o `code` esperados. Passo a passo em [`postman/README.md`](../postman/README.md).
+Sem abrir o Postman:
+
+```bash
+npx newman run postman/marketplace-order-hub.postman_collection.json -e postman/local.postman_environment.json
+```
+
+Esperado: `failed` zerado em `requests` e `assertions`.
+
 ## 3. Testes automatizados
 
 ```bash
@@ -552,4 +564,5 @@ Ao fechar uma issue, acrescente aqui os testes novos e uma linha nesta tabela.
 | #11 | Pedido repetido devolve `200` com o original; concorrência no estoque e na chegada do mesmo pedido (seções 5.2, 8) |
 | #12 | Teste automatizado do fluxo completo (`OrderFlowIntegrationTest`, seção 3). Nenhum comportamento novo |
 | #13 | Teste pelo Swagger, com os exemplos de cada marketplace (seção 2) |
+| #31 | Coleção do Postman e Newman (seção 2, pasta `postman/`) |
 | #14 | Reposição de estoque confirma pedidos pendentes por ordem de chegada (seção 9; nota no 4.8; `StockReplenishmentIntegrationTest` na seção 3) |

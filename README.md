@@ -46,6 +46,9 @@ docker compose up -d mysql
 Passo a passo para subir no seu PC (Docker, Maven/IDE ou MySQL local) e testar cada endpoint na mão, com as
 respostas esperadas: [`docs/roteiro-de-testes.md`](docs/roteiro-de-testes.md).
 
+Prefere o Postman? A pasta [`postman/`](postman) tem a coleção com todas as requisições, já com testes que conferem o
+resultado, e um [README](postman/README.md) explicando cada uma e como usar junto com o Swagger.
+
 ## Arquitetura
 
 ![Fluxo do pedido: marketplaces → webhook → rate limit → mapper por canal → modelo único → regra de estoque → MySQL](docs/arquitetura.png)

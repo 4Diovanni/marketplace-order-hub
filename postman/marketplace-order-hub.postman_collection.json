@@ -1,0 +1,1434 @@
+{
+  "info": {
+    "name": "marketplace-order-hub",
+    "description": "Requisições para testar a API do marketplace-order-hub (marketplaces fictícios AlfaShop e BetaMarket). Cada requisição tem testes que conferem o status e o `code` esperados.\n\nPasso a passo, ordem de execução e como usar junto com o Swagger: postman/README.md no repositório.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Verificação",
+      "item": [
+        {
+          "name": "0.1 Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Esperado: `200` e `status` = `UP`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('status UP', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('UP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Produtos",
+      "description": "CRUD de produtos e ajuste de estoque. Rode na ordem: o produto criado em 1.4 é usado até o 1.11.",
+      "item": [
+        {
+          "name": "1.1 Listar produtos (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?page=0&size=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "3"
+                }
+              ]
+            },
+            "description": "Lista paginada, ordenada por SKU. Aceita `page`, `size` e `sort`.\n\nEsperado: `200` com `content` e `page`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('página com conteúdo', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.content).to.be.an('array').and.not.empty;",
+                  "    pm.expect(body.page).to.have.property('totalElements');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Detalhe de um produto",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/CAM-001",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "CAM-001"
+              ]
+            },
+            "description": "Produto do seed.\n\nEsperado: `200`, `sku` = `CAM-001`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('sku CAM-001', function () {",
+                  "    pm.expect(pm.response.json().sku).to.eql('CAM-001');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Produto inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/XXX-999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "XXX-999"
+              ]
+            },
+            "description": "Esperado: `404`, `code` = `PRODUCT_NOT_FOUND`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('code = PRODUCT_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('PRODUCT_NOT_FOUND');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Criar produto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Cria um produto com SKU novo (gerado a cada execução e guardado em `newSku`).\n\nEsperado: `201` e header `Location` apontando para o produto.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{newSku}}\",\n  \"name\": \"Meia esportiva\",\n  \"price\": 19.90,\n  \"stockQuantity\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('newSku', 'PST-' + Math.random().toString(36).slice(2, 8).toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('header Location', function () {",
+                  "    pm.expect(pm.response.headers.get('Location')).to.include('/api/products/' + pm.collectionVariables.get('newSku'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Criar com SKU duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Repete o 1.4.\n\nEsperado: `409`, `code` = `DUPLICATE_SKU`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{newSku}}\",\n  \"name\": \"Meia esportiva\",\n  \"price\": 19.90,\n  \"stockQuantity\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('code = DUPLICATE_SKU', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('DUPLICATE_SKU');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Criar com campos inválidos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "SKU com letra minúscula e espaço, nome vazio, preço negativo e estoque negativo.\n\nEsperado: `400`, `code` = `VALIDATION_ERROR` e a lista `errors` com um item por campo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"meia 1\",\n  \"name\": \"\",\n  \"price\": -1,\n  \"stockQuantity\": -5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('code = VALIDATION_ERROR', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('errors lista os 4 campos', function () {",
+                  "    const fields = pm.response.json().errors.map(function (e) { return e.field; });",
+                  "    pm.expect(fields).to.have.members(['sku', 'name', 'price', 'stockQuantity']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 Atualizar nome e preço",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{newSku}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{newSku}}"
+              ]
+            },
+            "description": "Só nome e preço mudam; SKU e estoque não.\n\nEsperado: `200`, estoque continua 100.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Meia esportiva cano alto\",\n  \"price\": 24.9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('nome novo e estoque intacto', function () {",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.name).to.eql('Meia esportiva cano alto');",
+                  "    pm.expect(body.stockQuantity).to.eql(100);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 Ajustar estoque (retirar 3)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{newSku}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{newSku}}",
+                "stock"
+              ]
+            },
+            "description": "`delta` positivo repõe, negativo retira.\n\nEsperado: `200`, `stockQuantity` = 97.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": -3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('estoque 97', function () {",
+                  "    pm.expect(pm.response.json().stockQuantity).to.eql(97);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.9 Ajuste que deixaria o estoque negativo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{newSku}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{newSku}}",
+                "stock"
+              ]
+            },
+            "description": "Esperado: `422`, `code` = `INSUFFICIENT_STOCK`. O estoque continua 97.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": -1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('code = INSUFFICIENT_STOCK', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('INSUFFICIENT_STOCK');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 Remover produto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{newSku}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{newSku}}"
+              ]
+            },
+            "description": "Esperado: `204`, sem corpo."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.11 Remover de novo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{newSku}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{newSku}}"
+              ]
+            },
+            "description": "Esperado: `404`, `code` = `PRODUCT_NOT_FOUND`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('code = PRODUCT_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('PRODUCT_NOT_FOUND');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Webhooks (pedidos dos marketplaces)",
+      "description": "Pedidos da AlfaShop (JSON plano, reais) e da BetaMarket (JSON aninhado, centavos). Usam os produtos do seed (`CAM-001`, `FON-001`, `GAR-001` com estoque; `BON-001` com estoque 0). Rode na ordem.",
+      "item": [
+        {
+          "name": "2.1 AlfaShop: pedido novo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "Pedido novo (id gerado e guardado em `alfaOrderId`). Há estoque para todos os itens.\n\nEsperado: `201`, `code` = `ORDER_CONFIRMED`, header `Location`. O id do pedido fica em `orderId` para a pasta Pedidos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{alfaOrderId}}\",\n  \"buyer\": { \"fullName\": \"Cliente Teste\" },\n  \"items\": [\n    { \"sku\": \"CAM-001\", \"qty\": 1, \"price\": 59.90 },\n    { \"sku\": \"FON-001\", \"qty\": 1, \"price\": 49.90 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('alfaOrderId', 'AS-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('code = ORDER_CONFIRMED', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_CONFIRMED');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('status CONFIRMED e Location', function () {",
+                  "    pm.expect(pm.response.json().order.status).to.eql('CONFIRMED');",
+                  "    pm.expect(pm.response.headers.get('Location')).to.include('/api/orders/');",
+                  "});",
+                  "pm.collectionVariables.set('orderId', pm.response.json().order.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 AlfaShop: mesmo pedido de novo (idempotência)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "Simula o retry do marketplace: mesmo `orderId` do 2.1.\n\nEsperado: `200` (não `201`), `code` = `ORDER_ALREADY_RECEIVED`, o mesmo `id` do 2.1, sem `Location`. O estoque não muda.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{alfaOrderId}}\",\n  \"buyer\": { \"fullName\": \"Cliente Teste\" },\n  \"items\": [\n    { \"sku\": \"CAM-001\", \"qty\": 1, \"price\": 59.90 },\n    { \"sku\": \"FON-001\", \"qty\": 1, \"price\": 49.90 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('code = ORDER_ALREADY_RECEIVED', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_ALREADY_RECEIVED');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('mesmo pedido, sem Location', function () {",
+                  "    pm.expect(pm.response.json().order.id).to.eql(pm.collectionVariables.get('orderId'));",
+                  "    pm.expect(pm.response.headers.has('Location')).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 BetaMarket: pedido novo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/betamarket/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "betamarket",
+                "orders"
+              ]
+            },
+            "description": "Mesmo tipo de pedido, outro formato: valores em centavos e nome em dois campos.\n\nEsperado: `201`, `ORDER_CONFIRMED`, `customerName` = `Cliente Teste` e `unitPrice` 74.90 no `GAR-001` (veio como `7490` centavos).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": {\n    \"external_id\": \"{{betaOrderId}}\",\n    \"customer\": { \"first_name\": \"Cliente\", \"last_name\": \"Teste\" },\n    \"lines\": [\n      { \"product_code\": \"CAM-001\", \"amount\": 1, \"unit_price_cents\": 5990 },\n      { \"product_code\": \"GAR-001\", \"amount\": 1, \"unit_price_cents\": 7490 }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('betaOrderId', 'BM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('code = ORDER_CONFIRMED', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_CONFIRMED');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('nome juntado e centavos convertidos', function () {",
+                  "    const order = pm.response.json().order;",
+                  "    pm.expect(order.customerName).to.eql('Cliente Teste');",
+                  "    const garrafa = order.items.find(function (item) { return item.sku === 'GAR-001'; });",
+                  "    pm.expect(garrafa.unitPrice).to.eql(74.9);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 BetaMarket: item sem estoque (tudo ou nada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/betamarket/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "betamarket",
+                "orders"
+              ]
+            },
+            "description": "`CAM-001` tem estoque, mas `BON-001` está com 0. Nada é baixado.\n\nEsperado: `201`, `code` = `ORDER_PENDING_STOCK`, `status` = `PENDING_STOCK`. O estoque do `CAM-001` não muda.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": {\n    \"external_id\": \"{{pendingOrderId}}\",\n    \"customer\": { \"first_name\": \"Cliente\" },\n    \"lines\": [\n      { \"product_code\": \"CAM-001\", \"amount\": 1, \"unit_price_cents\": 5990 },\n      { \"product_code\": \"BON-001\", \"amount\": 1, \"unit_price_cents\": 6990 }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('pendingOrderId', 'BM-P-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('code = ORDER_PENDING_STOCK', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_PENDING_STOCK');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('status PENDING_STOCK', function () {",
+                  "    pm.expect(pm.response.json().order.status).to.eql('PENDING_STOCK');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Canal desconhecido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/gamashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "gamashop",
+                "orders"
+              ]
+            },
+            "description": "Esperado: `404`, `code` = `CHANNEL_NOT_FOUND`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('code = CHANNEL_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('CHANNEL_NOT_FOUND');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Payload fora do contrato do canal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "Sem `buyer` e com `items` vazio.\n\nEsperado: `400`, `code` = `INVALID_MARKETPLACE_PAYLOAD`, `errors` apontando `buyer` e `items`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"AS-INVALIDO\",\n  \"items\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('code = INVALID_MARKETPLACE_PAYLOAD', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('INVALID_MARKETPLACE_PAYLOAD');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('errors aponta buyer e items', function () {",
+                  "    const fields = pm.response.json().errors.map(function (e) { return e.field; });",
+                  "    pm.expect(fields).to.include.members(['buyer', 'items']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 SKU fora do catálogo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "Esperado: `422`, `code` = `UNKNOWN_SKU`, mensagem citando `XYZ-999`. Nenhum pedido é gravado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"AS-SKU-INEXISTENTE\",\n  \"buyer\": {\n    \"fullName\": \"Cliente Teste\"\n  },\n  \"items\": [\n    {\n      \"sku\": \"XYZ-999\",\n      \"qty\": 1,\n      \"price\": 10.0\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});",
+                  "pm.test('code = UNKNOWN_SKU', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('UNKNOWN_SKU');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('message cita o SKU', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('XYZ-999');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 AlfaShop: acima do limite de itens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "A AlfaShop aceita até 20 itens por pedido; este tem 21.\n\nEsperado: `400`, `code` = `INVALID_MARKETPLACE_PAYLOAD`, `items` em `errors`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"AS-21-ITENS\",\n  \"buyer\": {\n    \"fullName\": \"Cliente Teste\"\n  },\n  \"items\": [\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    },\n    {\n      \"sku\": \"CAM-001\",\n      \"qty\": 1,\n      \"price\": 59.9\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('code = INVALID_MARKETPLACE_PAYLOAD', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('INVALID_MARKETPLACE_PAYLOAD');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Pedidos (consulta)",
+      "description": "Consulta dos pedidos já recebidos. O 3.3 usa o pedido criado no 2.1 (variável `orderId`).",
+      "item": [
+        {
+          "name": "3.1 Listar pedidos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?size=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "size",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Do mais recente para o mais antigo. Aceita `page` e `size`.\n\nEsperado: `200`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('página de pedidos', function () {",
+                  "    pm.expect(pm.response.json().content).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Filtrar por status e canal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders?status=PENDING_STOCK&channel=BETAMARKET",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING_STOCK"
+                },
+                {
+                  "key": "channel",
+                  "value": "BETAMARKET"
+                }
+              ]
+            },
+            "description": "Filtros opcionais `status` (`CONFIRMED` ou `PENDING_STOCK`) e `channel` (`ALFASHOP` ou `BETAMARKET`).\n\nEsperado: `200`, só pedidos pendentes da BetaMarket."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('todos PENDING_STOCK da BETAMARKET', function () {",
+                  "    const content = pm.response.json().content;",
+                  "    pm.expect(content).to.not.be.empty;",
+                  "    content.forEach(function (order) {",
+                  "        pm.expect(order.status).to.eql('PENDING_STOCK');",
+                  "        pm.expect(order.channel).to.eql('BETAMARKET');",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Detalhe do pedido com itens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{orderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{orderId}}"
+              ]
+            },
+            "description": "Esperado: `200` e a lista `items`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('pedido com itens', function () {",
+                  "    pm.expect(pm.response.json().items).to.be.an('array').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Pedido inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "999999"
+              ]
+            },
+            "description": "Esperado: `404`, `code` = `ORDER_NOT_FOUND`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('code = ORDER_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_NOT_FOUND');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Erros genéricos",
+      "description": "Erros que não vêm das regras de negócio. Todos seguem o mesmo formato (RFC 7807, com `code` e `message`).",
+      "item": [
+        {
+          "name": "4.1 JSON malformado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Esperado: `400`, `code` = `MALFORMED_REQUEST`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"sku\":",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('code = MALFORMED_REQUEST', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('MALFORMED_REQUEST');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Rota inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/nao-existe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "nao-existe"
+              ]
+            },
+            "description": "Esperado: `404`, `code` = `RESOURCE_NOT_FOUND`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('code = RESOURCE_NOT_FOUND', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('RESOURCE_NOT_FOUND');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 Método não suportado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "1"
+              ]
+            },
+            "description": "Esperado: `405`, `code` = `REQUEST_NOT_SUPPORTED`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 405', function () {",
+                  "    pm.response.to.have.status(405);",
+                  "});",
+                  "pm.test('code = REQUEST_NOT_SUPPORTED', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('REQUEST_NOT_SUPPORTED');",
+                  "});",
+                  "pm.test('message pronta para o seller', function () {",
+                  "    pm.expect(pm.response.json().message).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Rate limit",
+      "description": "Deixe esta pasta por último: ela gasta o limite da BetaMarket (30 por minuto) e outros pedidos da BetaMarket recebem 429 até a janela virar.",
+      "item": [
+        {
+          "name": "5.1 Estourar o limite da BetaMarket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/betamarket/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "betamarket",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": {\n    \"external_id\": \"BM-RATE-LIMIT\",\n    \"customer\": { \"first_name\": \"Cliente\" },\n    \"lines\": [\n      { \"product_code\": \"LIV-001\", \"amount\": 1, \"unit_price_cents\": 3490 }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sempre o mesmo pedido, então a primeira passa com `201` e as outras com `200`, sem mexer no estoque, até o limite. Para ver o `429`, rode **só esta requisição** no Collection Runner com **35 iterações** (ou com Newman: `--folder \"5. Rate limit\" -n 35`).\n\nEsperado a partir da 31ª requisição do minuto: `429`, header `Retry-After` e `code` = `RATE_LIMIT_EXCEEDED`. A AlfaShop não é afetada: o limite é por canal."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200, 201 ou 429', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 429]);",
+                  "});",
+                  "if (pm.response.code === 429) {",
+                  "    pm.test('429 traz Retry-After e RATE_LIMIT_EXCEEDED', function () {",
+                  "        pm.expect(pm.response.headers.get('Retry-After')).to.match(/^[0-9]+$/);",
+                  "        pm.expect(pm.response.json().code).to.eql('RATE_LIMIT_EXCEEDED');",
+                  "        pm.expect(pm.response.json().retryAfterSeconds).to.be.a('number');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "description": "URL da aplicação."
+    },
+    {
+      "key": "orderId",
+      "value": "1",
+      "description": "Preenchida pelo 2.1; usada no 3.3."
+    },
+    {
+      "key": "newSku",
+      "value": "",
+      "description": "Gerada pelo 1.4."
+    },
+    {
+      "key": "alfaOrderId",
+      "value": "",
+      "description": "Gerada pelo 2.1."
+    },
+    {
+      "key": "betaOrderId",
+      "value": "",
+      "description": "Gerada pelo 2.3."
+    },
+    {
+      "key": "pendingOrderId",
+      "value": "",
+      "description": "Gerada pelo 2.4."
+    }
+  ]
+}
