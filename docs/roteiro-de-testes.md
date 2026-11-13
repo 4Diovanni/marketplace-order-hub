@@ -565,4 +565,4 @@ Ao fechar uma issue, acrescente aqui os testes novos e uma linha nesta tabela.
 | #12 | Teste automatizado do fluxo completo (`OrderFlowIntegrationTest`, seção 3). Nenhum comportamento novo |
 | #13 | Teste pelo Swagger, com os exemplos de cada marketplace (seção 2) |
 | #31 | Coleção do Postman e Newman (seção 2, pasta `postman/`) |
-| #14 | Reposição de estoque confirma pedidos pendentes por ordem de chegada (seção 9; nota no 4.8; `StockReplenishmentIntegrationTest` na seção 3) |
+| #14 | Reposição de estoque confirma pedidos pendentes por ordem de chegada (seção 9; nota no 4.8; `StockReplenishmentIntegrationTest` na seção 3; pasta 5 da coleção do Postman) |
