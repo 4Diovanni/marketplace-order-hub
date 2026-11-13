@@ -32,10 +32,13 @@ public class OrderRecordingService {
 
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
+    private final StockReservationService stockReservationService;
 
-    public OrderRecordingService(OrderRepository orderRepository, ProductRepository productRepository) {
+    public OrderRecordingService(OrderRepository orderRepository, ProductRepository productRepository,
+            StockReservationService stockReservationService) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
+        this.stockReservationService = stockReservationService;
     }
 
     /**
@@ -49,7 +52,8 @@ public class OrderRecordingService {
         Map<String, Integer> quantityBySku = totalQuantityPerSku(incoming.items());
         Map<String, Product> productBySku = findProducts(quantityBySku.keySet());
 
-        OrderStatus status = reserveStockIfAvailable(quantityBySku, productBySku);
+        boolean reserved = stockReservationService.reserveAllOrNothing(quantityBySku, productBySku);
+        OrderStatus status = reserved ? OrderStatus.CONFIRMED : OrderStatus.PENDING_STOCK;
 
         Order order = orderRepository.saveAndFlush(Order.of(incoming, status));
         log.info("Pedido recebido: channel={}, externalOrderId={}, status={}, orderId={}",
@@ -78,28 +82,5 @@ public class OrderRecordingService {
             throw new UnknownSkuException(unknownSkus);
         }
         return productBySku;
-    }
-
-    /** Reserves stock for every item, or for none. */
-    private OrderStatus reserveStockIfAvailable(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
-        if (!hasStockForAllItems(quantityBySku, productBySku)) {
-            return OrderStatus.PENDING_STOCK;
-        }
-
-        for (Map.Entry<String, Integer> entry : quantityBySku.entrySet()) {
-            Product product = productBySku.get(entry.getKey());
-            product.adjustStock(-entry.getValue());
-        }
-        return OrderStatus.CONFIRMED;
-    }
-
-    private boolean hasStockForAllItems(Map<String, Integer> quantityBySku, Map<String, Product> productBySku) {
-        for (Map.Entry<String, Integer> entry : quantityBySku.entrySet()) {
-            Product product = productBySku.get(entry.getKey());
-            if (!product.hasStockFor(entry.getValue())) {
-                return false;
-            }
-        }
-        return true;
     }
 }

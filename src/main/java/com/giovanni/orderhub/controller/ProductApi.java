@@ -38,8 +38,11 @@ interface ProductApi {
     ProductResponse update(@Parameter(example = "CAM-001") String sku, UpdateProductRequest request);
 
     @Operation(summary = "Ajusta o estoque",
-            description = "delta positivo repõe, negativo retira. O estoque nunca fica negativo.")
-    @ApiResponse(responseCode = "200", description = "Estoque ajustado")
+            description = "delta positivo repõe, negativo retira. O estoque nunca fica negativo. "
+                    + "Ao repor, confirma por ordem de chegada os pedidos PENDING_STOCK que esperavam esse SKU "
+                    + "(tudo ou nada por pedido; o que ainda não couber continua pendente).")
+    @ApiResponse(responseCode = "200", description = "Estoque ajustado; stockQuantity já desconta os pedidos "
+            + "pendentes confirmados")
     @ApiResponse(responseCode = "404", description = "SKU não cadastrado (PRODUCT_NOT_FOUND)")
     @ApiResponse(responseCode = "422", description = "O estoque ficaria negativo (INSUFFICIENT_STOCK)")
     @ApiResponse(responseCode = "503", description = "Outra operação alterou o produto ao mesmo tempo "
