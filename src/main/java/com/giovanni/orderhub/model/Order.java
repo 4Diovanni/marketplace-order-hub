@@ -16,7 +16,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -76,6 +78,27 @@ public class Order {
 
     public static Order of(IncomingOrder incoming, OrderStatus status) {
         return new Order(incoming, status);
+    }
+
+    /**
+     * Moves a pending order to confirmed. The caller must have reserved the stock first.
+     *
+     * @throws IllegalStateException if the order is not pending; confirming twice would reserve stock twice.
+     */
+    public void confirm() {
+        if (status != OrderStatus.PENDING_STOCK) {
+            throw new IllegalStateException("Pedido " + id + " não está pendente: status=" + status);
+        }
+        this.status = OrderStatus.CONFIRMED;
+    }
+
+    /** The same SKU can appear in more than one line; the stock check needs the total per SKU. */
+    public Map<String, Integer> quantityBySku() {
+        Map<String, Integer> quantityBySku = new LinkedHashMap<>();
+        for (OrderItem item : items) {
+            quantityBySku.merge(item.getSku(), item.getQuantity(), Integer::sum);
+        }
+        return quantityBySku;
     }
 
     public Long getId() {

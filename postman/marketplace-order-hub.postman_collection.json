@@ -1339,11 +1339,399 @@
       ]
     },
     {
-      "name": "5. Rate limit",
+      "name": "5. Reposição de estoque",
+      "description": "Issue #14. Repor estoque (delta positivo) confirma os pedidos PENDING_STOCK que têm aquele SKU, do mais antigo para o mais novo, com a regra de tudo ou nada. Um pedido que ainda não cabe continua pendente e não trava os seguintes. A pasta cria o próprio produto, então não depende do seed.",
+      "item": [
+        {
+          "name": "5.1 Criar produto sem estoque",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products"
+              ]
+            },
+            "description": "Cria um produto com estoque 0 (SKU gerado a cada execução e guardado em `restockSku`).\n\nEsperado: `201`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"{{restockSku}}\",\n  \"name\": \"Produto em falta\",\n  \"price\": 10.00,\n  \"stockQuantity\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('restockSku', 'REP-' + Math.random().toString(36).slice(2, 8).toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('estoque 0', function () {",
+                  "    pm.expect(pm.response.json().stockQuantity).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Pedido de 3 unidades (fica pendente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "Primeiro pedido, o mais antigo: pede 3 unidades de um produto sem estoque.\n\nEsperado: `201`, `code` = `ORDER_PENDING_STOCK`. O id fica em `bigPendingOrderId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{bigPendingOrderIdExt}}\",\n  \"buyer\": { \"fullName\": \"Cliente Teste\" },\n  \"items\": [\n    { \"sku\": \"{{restockSku}}\", \"qty\": 3, \"price\": 10.00 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('bigPendingOrderIdExt', 'AS-REP-G-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('code = ORDER_PENDING_STOCK', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_PENDING_STOCK');",
+                  "});",
+                  "pm.collectionVariables.set('bigPendingOrderId', pm.response.json().order.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 Pedido de 1 unidade (fica pendente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/alfashop/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "webhooks",
+                "alfashop",
+                "orders"
+              ]
+            },
+            "description": "Segundo pedido, mais novo: pede 1 unidade.\n\nEsperado: `201`, `code` = `ORDER_PENDING_STOCK`. O id fica em `smallPendingOrderId`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"{{smallPendingOrderIdExt}}\",\n  \"buyer\": { \"fullName\": \"Cliente Teste\" },\n  \"items\": [\n    { \"sku\": \"{{restockSku}}\", \"qty\": 1, \"price\": 10.00 }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('smallPendingOrderIdExt', 'AS-REP-P-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('code = ORDER_PENDING_STOCK', function () {",
+                  "    pm.expect(pm.response.json().code).to.eql('ORDER_PENDING_STOCK');",
+                  "});",
+                  "pm.collectionVariables.set('smallPendingOrderId', pm.response.json().order.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 Repor 2 unidades",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{restockSku}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{restockSku}}",
+                "stock"
+              ]
+            },
+            "description": "Repõe 2 unidades. O pedido de 3 (mais antigo) é tentado primeiro e não cabe; o de 1 cabe e é confirmado.\n\nEsperado: `200`, `stockQuantity` = 1 (a resposta já desconta o pedido confirmado).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('stockQuantity = 1', function () {",
+                  "    pm.expect(pm.response.json().stockQuantity).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.5 Pedido de 3 continua pendente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{bigPendingOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{bigPendingOrderId}}"
+              ]
+            },
+            "description": "Esperado: `200`, `status` = `PENDING_STOCK`. Não cabia em 2 unidades e não travou o pedido seguinte."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('status PENDING_STOCK', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('PENDING_STOCK');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.6 Pedido de 1 foi confirmado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{smallPendingOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{smallPendingOrderId}}"
+              ]
+            },
+            "description": "Esperado: `200`, `status` = `CONFIRMED`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('status CONFIRMED', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('CONFIRMED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.7 Repor mais 2 unidades",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/products/{{restockSku}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "products",
+                "{{restockSku}}",
+                "stock"
+              ]
+            },
+            "description": "Agora há 3 unidades: o pedido de 3 cabe.\n\nEsperado: `200`, `stockQuantity` = 0.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"delta\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('stockQuantity = 0', function () {",
+                  "    pm.expect(pm.response.json().stockQuantity).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.8 Pedido de 3 foi confirmado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders/{{bigPendingOrderId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{{bigPendingOrderId}}"
+              ]
+            },
+            "description": "Esperado: `200`, `status` = `CONFIRMED`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('status CONFIRMED', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql('CONFIRMED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Rate limit",
       "description": "Deixe esta pasta por último: ela gasta o limite da BetaMarket (30 por minuto) e outros pedidos da BetaMarket recebem 429 até a janela virar.",
       "item": [
         {
-          "name": "5.1 Estourar o limite da BetaMarket",
+          "name": "6.1 Estourar o limite da BetaMarket",
           "request": {
             "method": "POST",
             "header": [
@@ -1429,6 +1817,31 @@
       "key": "pendingOrderId",
       "value": "",
       "description": "Gerada pelo 2.4."
+    },
+    {
+      "key": "restockSku",
+      "value": "",
+      "description": "Gerada pelo 5.1."
+    },
+    {
+      "key": "bigPendingOrderIdExt",
+      "value": "",
+      "description": "Gerada pelo 5.2."
+    },
+    {
+      "key": "bigPendingOrderId",
+      "value": "",
+      "description": "Preenchida pelo 5.2."
+    },
+    {
+      "key": "smallPendingOrderIdExt",
+      "value": "",
+      "description": "Gerada pelo 5.3."
+    },
+    {
+      "key": "smallPendingOrderId",
+      "value": "",
+      "description": "Preenchida pelo 5.3."
     }
   ]
 }

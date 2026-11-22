@@ -5,6 +5,7 @@ import com.giovanni.orderhub.dto.product.ProductResponse;
 import com.giovanni.orderhub.dto.product.StockAdjustmentRequest;
 import com.giovanni.orderhub.dto.product.UpdateProductRequest;
 import com.giovanni.orderhub.service.ProductService;
+import com.giovanni.orderhub.service.StockAdjustmentService;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.data.domain.Page;
@@ -27,9 +28,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class ProductController implements ProductApi {
 
     private final ProductService productService;
+    private final StockAdjustmentService stockAdjustmentService;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, StockAdjustmentService stockAdjustmentService) {
         this.productService = productService;
+        this.stockAdjustmentService = stockAdjustmentService;
     }
 
     @Override
@@ -64,7 +67,7 @@ public class ProductController implements ProductApi {
     @Override
     @PatchMapping("/{sku}/stock")
     public ProductResponse adjustStock(@PathVariable String sku, @Valid @RequestBody StockAdjustmentRequest request) {
-        return productService.adjustStock(sku, request.delta());
+        return stockAdjustmentService.adjust(sku, request.delta());
     }
 
     @Override

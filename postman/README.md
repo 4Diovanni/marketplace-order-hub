@@ -10,7 +10,7 @@ conferem o status e o `code` esperados, então rodar a coleção inteira diz na 
 
 | Arquivo | Para quê |
 |---|---|
-| `marketplace-order-hub.postman_collection.json` | A coleção: 28 requisições em 6 pastas, com testes e descrição em cada uma |
+| `marketplace-order-hub.postman_collection.json` | A coleção: 36 requisições em 7 pastas, com testes e descrição em cada uma |
 | `local.postman_environment.json` | Ambiente com a `baseUrl` (`http://localhost:8080`). Troque se a app estiver em outra porta |
 
 ## Como usar
@@ -56,7 +56,7 @@ Esperado: `failed` zerado em `requests` e `assertions`.
 Os pedidos usam os produtos do seed (`CAM-001`, `FON-001`, `GAR-001`, `LIV-001` com estoque; `BON-001` com **estoque 0**,
 de propósito, para o teste de falta de estoque). Cada rodada da coleção baixa poucas unidades. Se mexer no estoque
 desses produtos, ou depois de muitas rodadas, o 2.1 e o 2.3 podem deixar de ser `ORDER_CONFIRMED`. Para voltar ao estado
-inicial, veja a [seção 10 do roteiro](../docs/roteiro-de-testes.md#10-voltar-o-banco-ao-estado-inicial).
+inicial, veja a [seção 11 do roteiro](../docs/roteiro-de-testes.md#11-voltar-o-banco-ao-estado-inicial).
 
 ## As requisições
 
@@ -114,20 +114,36 @@ Cada requisição também traz o esperado na aba **Description**.
 | 4.2 | `GET /api/nao-existe` | `404` `RESOURCE_NOT_FOUND` |
 | 4.3 | `DELETE /api/orders/1` | `405` `REQUEST_NOT_SUPPORTED` |
 
-### 5. Rate limit
+### 5. Reposição de estoque
+
+Issue #14. Repor estoque confirma os pedidos `PENDING_STOCK` daquele SKU, do mais antigo para o mais novo; o que ainda
+não cabe continua pendente e não trava os seguintes. A pasta cria o próprio produto (`restockSku`), sem depender do seed.
+
+| # | Requisição | O que mostra | Esperado |
+|---|---|---|---|
+| 5.1 | `POST /api/products` | Produto novo com estoque 0 | `201` |
+| 5.2 | `POST /api/webhooks/alfashop/orders` | Pedido mais antigo, de 3 unidades | `201` `ORDER_PENDING_STOCK` |
+| 5.3 | `POST /api/webhooks/alfashop/orders` | Pedido mais novo, de 1 unidade | `201` `ORDER_PENDING_STOCK` |
+| 5.4 | `PATCH /api/products/{sku}/stock` | Repõe 2: o de 3 não cabe e é pulado, o de 1 é confirmado | `200`, estoque 1 |
+| 5.5 | `GET /api/orders/{{bigPendingOrderId}}` | O de 3 continua esperando | `200`, `PENDING_STOCK` |
+| 5.6 | `GET /api/orders/{{smallPendingOrderId}}` | O de 1 foi confirmado | `200`, `CONFIRMED` |
+| 5.7 | `PATCH /api/products/{sku}/stock` | Repõe mais 2 | `200`, estoque 0 |
+| 5.8 | `GET /api/orders/{{bigPendingOrderId}}` | Agora o de 3 também foi confirmado | `200`, `CONFIRMED` |
+
+### 6. Rate limit
 
 | # | Requisição | Esperado |
 |---|---|---|
-| 5.1 | `POST /api/webhooks/betamarket/orders` (sempre o mesmo pedido) | Uma vez só: `201` ou `200`. Para ver o `429`, veja abaixo |
+| 6.1 | `POST /api/webhooks/betamarket/orders` (sempre o mesmo pedido) | Uma vez só: `201` ou `200`. Para ver o `429`, veja abaixo |
 
-A BetaMarket aceita 30 requisições por minuto. Para estourar o limite, rode **só a pasta 5** com **35 iterações**:
+A BetaMarket aceita 30 requisições por minuto. Para estourar o limite, rode **só a pasta 6** com **35 iterações**:
 
-- No Postman: clique nos três pontos da pasta **5. Rate limit** → **Run folder** → em **Iterations**, digite `35` → **Run**.
+- No Postman: clique nos três pontos da pasta **6. Rate limit** → **Run folder** → em **Iterations**, digite `35` → **Run**.
 - No terminal:
 
   ```bash
   npx newman run postman/marketplace-order-hub.postman_collection.json \
-    -e postman/local.postman_environment.json --folder "5. Rate limit" -n 35
+    -e postman/local.postman_environment.json --folder "6. Rate limit" -n 35
   ```
 
 Esperado: as primeiras passam (`201`/`200`) e o restante recebe `429` com o header `Retry-After` (segundos até o canal
